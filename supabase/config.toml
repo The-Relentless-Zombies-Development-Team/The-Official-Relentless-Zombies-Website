@@ -1,0 +1,8 @@
+[project]
+project_id = "qyoortkrlfxzuzjxwfge"
+
+[auth]
+enabled = true
+
+[api]
+enabled = true
