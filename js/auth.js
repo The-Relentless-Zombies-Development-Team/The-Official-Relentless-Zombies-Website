@@ -5,10 +5,11 @@ async function signIn(email, password) {
 }
 
 async function signUp(username, email, password) {
+  const redirectTo = window.location.origin + '/The-Official-Relentless-Zombies-Website/login.html'
   const { data, error } = await sb.auth.signUp({
     email,
     password,
-    options: { data: { username: username } }
+    options: { data: { username: username }, emailRedirectTo: redirectTo }
   })
   if (error) throw error
   return data
