@@ -4,11 +4,11 @@ async function signIn(email, password) {
   return data
 }
 
-async function signUp(name, email, password) {
+async function signUp(username, email, password) {
   const { data, error } = await sb.auth.signUp({
     email,
     password,
-    options: { data: { full_name: name } }
+    options: { data: { username: username } }
   })
   if (error) throw error
   return data
@@ -46,7 +46,7 @@ function updateNavForUser(user) {
     signedOutLinks.forEach(el => el.style.display = 'none')
     signedInLinks.forEach(el => el.style.display = '')
     if (userNameEl) {
-      userNameEl.textContent = user.user_metadata?.full_name || user.email || 'User'
+      userNameEl.textContent = user.user_metadata?.username || user.email || 'User'
     }
   } else {
     signedOutLinks.forEach(el => el.style.display = '')
@@ -65,7 +65,7 @@ async function initAuth() {
     updateNavForUser(u)
   })
 
-  const logoutBtn = document.getElementById('logout-btn')
+  const logoutBtn = document.getElementById('signout-link')
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async (e) => {
       e.preventDefault()

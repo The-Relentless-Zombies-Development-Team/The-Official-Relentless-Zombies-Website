@@ -4,6 +4,7 @@ create table public.fanart (
   user_id    uuid references auth.users not null default auth.uid(),
   image_url  text not null,
   caption    text,
+  username   text,
   approved   boolean default false
 );
 

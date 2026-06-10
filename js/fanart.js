@@ -1,44 +1,50 @@
-async function loadGallery() {
-  const container = document.getElementById('gallery-grid')
-  if (!container) return
+const STORAGE_BUCKET = 'fanart'
 
-  container.innerHTML = '<div class="gallery-loading">Loading fan art...</div>'
+async function loadGallery() {
+  const grid = document.getElementById('gallery-grid')
+  const loading = document.getElementById('gallery-loading')
+  if (!grid) return
+
+  if (loading) loading.style.display = 'block'
+  grid.innerHTML = ''
 
   const { data: images, error } = await sb
     .from('fanart')
     .select('*')
     .order('created_at', { ascending: false })
 
+  if (loading) loading.style.display = 'none'
+
   if (error) {
-    container.innerHTML = '<div class="gallery-error">Failed to load fan art.</div>'
+    grid.innerHTML = '<div class="gallery-empty"><h2>Failed to load</h2><p>Could not load fan art. Please try again later.</p></div>'
     console.error(error)
     return
   }
 
   if (!images || images.length === 0) {
-    container.innerHTML = '<div class="gallery-empty">No fan art yet. Be the first to share!</div>'
+    grid.innerHTML = '<div class="gallery-empty"><h2>No fan art yet</h2><p>Be the first to share!</p></div>'
     return
   }
 
-  container.innerHTML = ''
   for (const img of images) {
-    const card = document.createElement('div')
-    card.className = 'fanart-card'
+    const item = document.createElement('div')
+    item.className = 'gallery-item'
 
-    const publicUrl = sb.storage.from('fanart-images').getPublicUrl(img.image_url).data.publicUrl
+    const { data: { publicUrl } } = sb.storage.from(STORAGE_BUCKET).getPublicUrl(img.image_url)
+    const caption = img.caption || ''
+    const author = img.username || ''
 
-    card.innerHTML = `
-      <img src="${publicUrl}" alt="${img.title || 'Fan art'}" loading="lazy" class="fanart-image"
-        onclick="openModal('${publicUrl}', '${img.title?.replace(/'/g, "\\'") || ''}')">
-      <div class="fanart-info">
-        <span class="fanart-title">${img.title || 'Untitled'}</span>
-      </div>
+    item.innerHTML = `
+      <img src="${publicUrl}" alt="${caption || 'Fan art'}" loading="lazy"
+        onclick="openModal('${publicUrl.replace(/'/g, "\\'")}', '${caption.replace(/'/g, "\\'")}')">
+      <div class="author">${author}</div>
+      ${caption ? `<div class="caption">${caption}</div>` : ''}
     `
-    container.appendChild(card)
+    grid.appendChild(item)
   }
 }
 
-async function uploadFanArt(file, title) {
+async function uploadFanArt(file) {
   const session = await getSession()
   if (!session) throw new Error('You must be signed in to upload.')
 
@@ -46,100 +52,88 @@ async function uploadFanArt(file, title) {
   const filePath = `${session.user.id}/${Date.now()}.${ext}`
 
   const { error: uploadError } = await sb.storage
-    .from('fanart-images')
+    .from(STORAGE_BUCKET)
     .upload(filePath, file)
 
   if (uploadError) throw uploadError
+
+  const username = session.user.user_metadata?.username || session.user.email || ''
 
   const { error: dbError } = await sb
     .from('fanart')
     .insert({
       user_id: session.user.id,
       image_url: filePath,
-      title: title
+      caption: '',
+      username: username,
+      approved: false
     })
 
   if (dbError) throw dbError
 }
 
-function openModal(url, title) {
-  const modal = document.getElementById('image-modal')
+function openModal(url, caption) {
+  const overlay = document.getElementById('modal-overlay')
   const img = document.getElementById('modal-image')
-  const caption = document.getElementById('modal-caption')
-  if (!modal || !img) return
+  const cap = document.getElementById('modal-caption')
+  if (!overlay || !img) return
   img.src = url
-  if (caption) caption.textContent = title
-  modal.style.display = 'flex'
+  if (cap) cap.textContent = caption || ''
+  overlay.classList.add('open')
 }
 
 function closeModal() {
-  const modal = document.getElementById('image-modal')
-  if (modal) modal.style.display = 'none'
+  const overlay = document.getElementById('modal-overlay')
+  if (overlay) overlay.classList.remove('open')
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  await loadGallery()
+  loadGallery()
 
   const session = await getSession()
-  const uploadSection = document.getElementById('upload-section')
-  const uploadForm = document.getElementById('upload-form')
+  const uploadArea = document.getElementById('upload-area')
   const uploadBtn = document.getElementById('upload-btn')
-  const cancelUploadBtn = document.getElementById('cancel-upload')
+  const uploadInput = document.getElementById('upload-input')
+  const uploadStatus = document.getElementById('upload-status')
 
-  if (session && uploadSection) {
-    uploadSection.style.display = 'block'
+  if (session && uploadArea) {
+    uploadArea.classList.add('visible')
   }
 
-  if (uploadBtn && uploadForm) {
+  if (uploadBtn && uploadInput) {
     uploadBtn.addEventListener('click', () => {
-      uploadForm.style.display = 'flex'
-      uploadBtn.style.display = 'none'
+      uploadInput.click()
     })
-  }
 
-  if (cancelUploadBtn && uploadForm) {
-    cancelUploadBtn.addEventListener('click', () => {
-      uploadForm.style.display = 'none'
-      if (uploadBtn) uploadBtn.style.display = 'flex'
-    })
-  }
+    uploadInput.addEventListener('change', async () => {
+      const file = uploadInput.files?.[0]
+      if (!file) return
 
-  if (uploadForm) {
-    uploadForm.addEventListener('submit', async (e) => {
-      e.preventDefault()
-      const fileInput = document.getElementById('file-input')
-      const titleInput = document.getElementById('art-title')
-      const status = document.getElementById('upload-status')
-
-      if (!fileInput || !fileInput.files || !fileInput.files[0]) {
-        if (status) status.textContent = 'Please select an image.'
-        return
-      }
-
-      if (status) status.textContent = 'Uploading...'
-      const submitBtn = uploadForm.querySelector('button[type="submit"]')
-      if (submitBtn) submitBtn.disabled = true
+      if (uploadStatus) uploadStatus.textContent = 'Uploading...'
+      uploadBtn.disabled = true
 
       try {
-        await uploadFanArt(fileInput.files[0], titleInput?.value || '')
-        if (status) status.textContent = 'Upload complete!'
-        if (titleInput) titleInput.value = ''
-        if (fileInput) fileInput.value = ''
-        if (submitBtn) submitBtn.disabled = false
-        uploadForm.style.display = 'none'
-        if (uploadBtn) uploadBtn.style.display = 'flex'
-        await loadGallery()
+        await uploadFanArt(file)
+        if (uploadStatus) uploadStatus.textContent = 'Upload complete!'
+        uploadInput.value = ''
+        loadGallery()
       } catch (err) {
-        if (status) status.textContent = 'Error: ' + err.message
-        if (submitBtn) submitBtn.disabled = false
+        if (uploadStatus) uploadStatus.textContent = 'Error: ' + err.message
+      } finally {
+        uploadBtn.disabled = false
       }
     })
   }
 
-  const modal = document.getElementById('image-modal')
-  if (modal) {
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) closeModal()
+  const closeBtn = document.getElementById('modal-close')
+  if (closeBtn) {
+    closeBtn.addEventListener('click', closeModal)
+  }
+
+  const overlay = document.getElementById('modal-overlay')
+  if (overlay) {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeModal()
     })
   }
 

@@ -53,8 +53,8 @@
 
       <form id="signup-form">
         <div class="form-group">
-          <label for="name">Name<span class="required">*</span></label>
-          <input id="name" name="name" type="text" placeholder="Enter your name..." required autocomplete="name">
+          <label for="username">Username<span class="required">*</span></label>
+          <input id="username" name="username" type="text" placeholder="Enter your username..." required autocomplete="username">
         </div>
         <div class="form-group">
           <label for="email">Email<span class="required">*</span></label>
@@ -79,7 +79,7 @@
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const form = document.getElementById('signup-form')
-      const name = document.getElementById('name')
+      const username = document.getElementById('username')
       const email = document.getElementById('email')
       const password = document.getElementById('password')
       const btn = document.getElementById('signup-btn')
@@ -106,7 +106,7 @@
         btn.textContent = 'Creating account...'
 
         try {
-          await signUp(name.value.trim(), email.value.trim(), password.value)
+          await signUp(username.value.trim(), email.value.trim(), password.value)
           showSuccess('Account created! Check your email to confirm your signup.')
           form.reset()
           btn.disabled = false
