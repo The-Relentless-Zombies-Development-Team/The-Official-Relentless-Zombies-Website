@@ -7,3 +7,6 @@ additional_redirect_urls = ["https://the-relentless-zombies-development-team.git
 
 [api]
 enabled = true
+
+[functions.send-email]
+verify_jwt = false
