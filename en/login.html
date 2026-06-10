@@ -121,7 +121,7 @@
 
         try {
           await signIn(email.value.trim(), password.value)
-          window.location.href = 'index.html'
+          window.location.href = window.location.origin + '/The-Official-Relentless-Zombies-Website/en/index.html'
         } catch (err) {
           showError(err.message)
           btn.disabled = false

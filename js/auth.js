@@ -66,12 +66,12 @@ async function initAuth() {
     updateNavForUser(u)
   })
 
-  const logoutBtn = document.getElementById('signout-link')
+  const logoutBtn = document.getElementById('logout-btn')
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async (e) => {
       e.preventDefault()
       await signOut()
-      window.location.href = 'index.html'
+      window.location.href = window.location.origin + '/The-Official-Relentless-Zombies-Website/index.html'
     })
   }
 }
