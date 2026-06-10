@@ -1,8 +1,9 @@
-[project]
 project_id = "qyoortkrlfxzuzjxwfge"
 
 [auth]
 enabled = true
+site_url = "https://the-relentless-zombies-development-team.github.io/The-Official-Relentless-Zombies-Website/"
+additional_redirect_urls = ["https://the-relentless-zombies-development-team.github.io/The-Official-Relentless-Zombies-Website/**"]
 
 [api]
 enabled = true
