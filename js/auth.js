@@ -47,9 +47,7 @@ function updateNavForUser(user) {
     signedOutLinks.forEach(el => el.style.display = 'none')
     signedInLinks.forEach(el => el.style.display = '')
     if (userNameEl) {
-      const name = user.user_metadata?.username || user.email?.split('@')[0] || 'User'
-      userNameEl.textContent = name.length > 14 ? name.slice(0, 13) + '…' : name
-      userNameEl.title = name
+      userNameEl.textContent = user.user_metadata?.username || user.email?.split('@')[0] || 'User'
     }
   } else {
     signedOutLinks.forEach(el => el.style.display = '')
