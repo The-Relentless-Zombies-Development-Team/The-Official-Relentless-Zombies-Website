@@ -66,6 +66,10 @@ async function initAuth() {
     updateNavForUser(u)
   })
 
+  const style = document.createElement('style')
+  style.textContent = '.nav-signed-in{white-space:nowrap;overflow:visible;width:auto !important;flex-shrink:0}'
+  document.head.appendChild(style)
+
   const logoutBtn = document.getElementById('logout-btn')
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async (e) => {
