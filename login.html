@@ -102,7 +102,8 @@
           return
         }
         try {
-          const { error } = await sb.auth.resetPasswordForEmail(emailVal)
+          const redirectTo = window.location.origin + '/The-Official-Relentless-Zombies-Website/login/reset-password.html'
+          const { error } = await sb.auth.resetPasswordForEmail(emailVal, { redirectTo })
           if (error) throw error
           showSuccess('Password reset email sent! Check your inbox.')
         } catch (err) {
