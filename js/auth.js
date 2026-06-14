@@ -67,7 +67,7 @@ async function initAuth() {
   })
 
   const style = document.createElement('style')
-  style.textContent = '.nav-signed-in{white-space:nowrap;overflow:visible;width:auto !important;flex-shrink:0}'
+  style.textContent = '.nav-signed-in{white-space:nowrap;overflow:visible;width:auto !important;flex-shrink:0}#logout-btn{color:rgb(19,120,38) !important}'
   document.head.appendChild(style)
 
   const logoutBtn = document.getElementById('logout-btn')
