@@ -38,14 +38,20 @@ function onAuthChange(callback) {
   })
 }
 
+let _dropdown = null
+let _clickAwayHandler = null
+
 function buildDropdown(user) {
   const username = user.user_metadata?.username || user.email?.split('@')[0] || 'User'
+
+  if (_dropdown) {
+    _dropdown.remove()
+  }
 
   const dropdown = document.createElement('div')
   dropdown.id = 'nav-dropdown'
   dropdown.style.cssText = `
-    display:none;position:absolute;top:70px;left:50%;transform:translateX(-50%);
-    background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:12px;
+    display:none;position:fixed;background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:12px;
     padding:16px;min-width:200px;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,0.6)
   `
 
@@ -112,18 +118,21 @@ function buildDropdown(user) {
     window.location.href = window.location.origin + '/The-Official-Relentless-Zombies-Website/index.html'
   })
 
+  _dropdown = dropdown
   return dropdown
+}
+
+function positionDropdown(el) {
+  if (!_dropdown) return
+  const rect = el.getBoundingClientRect()
+  _dropdown.style.top = (rect.bottom + 8) + 'px'
+  _dropdown.style.left = Math.max(8, Math.min(rect.left + rect.width / 2 - 100, window.innerWidth - 208)) + 'px'
 }
 
 function updateNavForUser(user) {
   const signedOutLinks = document.querySelectorAll('.nav-signed-out')
   const signedInLinks = document.querySelectorAll('.nav-signed-in')
   const userNameEl = document.getElementById('nav-user-name')
-  const existingDropdown = document.getElementById('nav-dropdown')
-
-  if (existingDropdown) {
-    existingDropdown.remove()
-  }
 
   if (user) {
     signedOutLinks.forEach(el => el.style.display = 'none')
@@ -133,23 +142,37 @@ function updateNavForUser(user) {
       userNameEl.textContent = displayName
     }
 
-    const dropdown = buildDropdown(user)
+    if (_dropdown) _dropdown.remove()
+    buildDropdown(user)
 
     if (userNameEl) {
-      userNameEl.addEventListener('click', (e) => {
+      userNameEl.onclick = function (e) {
         e.preventDefault()
-        dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block'
-      })
+        if (_dropdown.style.display === 'block') {
+          _dropdown.style.display = 'none'
+        } else {
+          positionDropdown(userNameEl)
+          _dropdown.style.display = 'block'
+        }
+      }
     }
 
-    document.addEventListener('click', (e) => {
-      if (dropdown.style.display === 'block' && !dropdown.contains(e.target) && e.target !== userNameEl && !userNameEl?.contains(e.target)) {
-        dropdown.style.display = 'none'
+    if (!_clickAwayHandler) {
+      _clickAwayHandler = function (e) {
+        const el = document.getElementById('nav-user-name')
+        if (_dropdown && _dropdown.style.display === 'block' && !_dropdown.contains(e.target) && e.target !== el && !el?.contains(e.target)) {
+          _dropdown.style.display = 'none'
+        }
       }
-    })
+      document.addEventListener('click', _clickAwayHandler)
+    }
   } else {
     signedOutLinks.forEach(el => el.style.display = '')
     signedInLinks.forEach(el => el.style.display = 'none')
+    if (_dropdown) {
+      _dropdown.remove()
+      _dropdown = null
+    }
   }
 }
 
@@ -164,7 +187,7 @@ async function initAuth() {
   })
 
   const style = document.createElement('style')
-  style.textContent = '.nav-signed-in{white-space:nowrap;overflow:visible;width:auto !important;height:auto !important;flex-shrink:0;display:flex;align-items:center}.nav-signed-out{white-space:nowrap}.framer-f1rxyg,.framer-1psrh43,.framer-1mu359g,.framer-yxpboc{white-space:nowrap}'
+  style.textContent = '.nav-signed-in{white-space:nowrap;overflow:visible;width:auto !important;height:auto !important;flex-shrink:0;display:flex;align-items:center}.nav-signed-out{white-space:nowrap}'
   document.head.appendChild(style)
 
   const url = window.location.pathname
