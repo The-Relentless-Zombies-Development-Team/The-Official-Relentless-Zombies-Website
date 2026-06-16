@@ -69,7 +69,7 @@ async function initAuth() {
   })
 
   const style = document.createElement('style')
-  style.textContent = '.nav-signed-in{white-space:nowrap;overflow:visible;width:auto !important;height:auto !important;flex-shrink:0;display:flex;align-items:center}.nav-signed-out{white-space:nowrap}[data-framer-root]>div:first-child{position:fixed !important;top:0 !important;left:50% !important;transform:translateX(-50%) !important;z-index:1000 !important}[data-framer-root]{padding-top:64px !important}'
+  style.textContent = '.nav-signed-in{white-space:nowrap;overflow:visible;width:auto !important;height:auto !important;flex-shrink:0;display:flex;align-items:center}.nav-signed-out{white-space:nowrap}[data-framer-root]>div:first-of-type{position:fixed !important;top:0 !important;left:50% !important;transform:translateX(-50%) !important;z-index:1000 !important}[data-framer-root]{padding-top:64px !important}.nav-signout-sm a{font-size:15px !important;font-weight:500 !important;line-height:2em !important}'
   document.head.appendChild(style)
 
   const url = window.location.pathname
