@@ -15,9 +15,11 @@ async function signUp(username, email, password) {
   return data
 }
 
-async function signOut() {
+async function signOut(e) {
+  if (e) e.preventDefault()
   const { error } = await sb.auth.signOut()
   if (error) throw error
+  window.location.href = window.location.origin + '/The-Official-Relentless-Zombies-Website/index.html'
 }
 
 async function getSession() {
@@ -38,130 +40,6 @@ function onAuthChange(callback) {
   })
 }
 
-let _dropdown = null
-let _clickAwayHandler = null
-
-function buildDropdown(user) {
-  const username = user.user_metadata?.username || user.email?.split('@')[0] || 'User'
-
-  if (_dropdown) {
-    _dropdown.remove()
-  }
-
-  const dropdown = document.createElement('div')
-  dropdown.id = 'nav-dropdown'
-  dropdown.style.cssText = `
-    display:none;position:fixed;background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:12px;
-    padding:16px;min-width:200px;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,0.6)
-  `
-
-  dropdown.innerHTML = `
-    <div style="margin-bottom:8px;padding:8px 12px;color:#fff;font-size:13px;font-weight:500;border-bottom:1px solid rgba(255,255,255,0.06)">
-      Signed in as <span style="color:rgb(255,114,0)">${username}</span>
-    </div>
-    <a href="${window.location.origin}/The-Official-Relentless-Zombies-Website/account.html" style="display:block;padding:8px 12px;color:#ccc;text-decoration:none;font-size:13px;border-radius:6px;transition:background 0.15s" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='transparent'">Manage Account</a>
-    <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06)">
-      <a href="#" id="dropdown-signout" style="display:block;padding:8px 12px;color:rgb(19,120,38) !important;text-decoration:none;font-size:13px;font-weight:600;border-radius:6px;transition:background 0.15s" onmouseover="this.style.background='rgba(19,120,38,0.1)'" onmouseout="this.style.background='transparent'">Sign Out</a>
-    </div>
-    <div style="position:absolute;bottom:12px;right:12px">
-      <button id="theme-toggle-btn" style="background:none;border:none;cursor:pointer;padding:4px;border-radius:6px;display:flex;align-items:center;justify-content:center" title="Toggle theme">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="theme-icon">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-        </svg>
-      </button>
-    </div>
-  `
-
-  document.body.appendChild(dropdown)
-
-  const themeBtn = dropdown.querySelector('#theme-toggle-btn')
-  const themeIcon = dropdown.querySelector('#theme-icon')
-  const currentTheme = localStorage.getItem('theme') || 'dark'
-
-  function updateThemeIcon(theme) {
-    if (theme === 'light') {
-      themeIcon.innerHTML = '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>'
-    } else {
-      themeIcon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'
-    }
-  }
-
-  function applyTheme(theme) {
-    if (theme === 'light') {
-      document.documentElement.style.setProperty('--theme-bg', '#fff', 'important')
-      document.documentElement.style.setProperty('--theme-text', '#000', 'important')
-      document.documentElement.style.setProperty('--theme-card-bg', '#f5f5f5', 'important')
-      document.documentElement.style.setProperty('--theme-border', 'rgba(0,0,0,0.1)', 'important')
-    } else {
-      document.documentElement.style.setProperty('--theme-bg', '#000', 'important')
-      document.documentElement.style.setProperty('--theme-text', '#fff', 'important')
-      document.documentElement.style.setProperty('--theme-card-bg', '#111', 'important')
-      document.documentElement.style.setProperty('--theme-border', 'rgba(255,255,255,0.08)', 'important')
-    }
-    localStorage.setItem('theme', theme)
-    updateThemeIcon(theme)
-  }
-
-  applyTheme(currentTheme)
-
-  themeBtn.addEventListener('click', (e) => {
-    e.stopPropagation()
-    const next = localStorage.getItem('theme') === 'light' ? 'dark' : 'light'
-    applyTheme(next)
-  })
-
-  const signoutBtn = dropdown.querySelector('#dropdown-signout')
-  signoutBtn.addEventListener('click', async (e) => {
-    e.preventDefault()
-    await signOut()
-    dropdown.style.display = 'none'
-    window.location.href = window.location.origin + '/The-Official-Relentless-Zombies-Website/index.html'
-  })
-
-  _dropdown = dropdown
-  return dropdown
-}
-
-function positionDropdown(el) {
-  if (!_dropdown) return
-  const rect = el.getBoundingClientRect()
-  _dropdown.style.top = (rect.bottom + 8) + 'px'
-  _dropdown.style.left = Math.max(8, Math.min(rect.left + rect.width / 2 - 100, window.innerWidth - 208)) + 'px'
-}
-
-function toggleDropdown(e) {
-  if (e) e.preventDefault()
-  if (!_dropdown || !document.body.contains(_dropdown)) {
-    const u = sb.auth.user()
-    if (u) buildDropdown(u)
-  }
-  if (!_dropdown) return
-  if (_dropdown.style.display === 'block') {
-    _dropdown.style.display = 'none'
-  } else {
-    const el = document.getElementById('nav-user-name')
-    if (el) positionDropdown(el)
-    _dropdown.style.display = 'block'
-  }
-}
-
-let _clickHandlerAttached = false
-function attachClickToUsername() {
-  if (_clickHandlerAttached) return
-  const btn = document.getElementById('nav-user-name')
-  if (!btn) return
-  btn.addEventListener('click', toggleDropdown)
-  // Catch clicks on parent <p> (in case framer CSS blocks button events)
-  const p = btn.closest('p')
-  if (p && p !== btn) {
-    p.addEventListener('click', function(e) {
-      if (e.target === btn || e.target.id === 'nav-user-name') return // already handled by button
-      toggleDropdown(e)
-    })
-  }
-  _clickHandlerAttached = true
-}
-
 function updateNavForUser(user) {
   const signedOutLinks = document.querySelectorAll('.nav-signed-out')
   const signedInLinks = document.querySelectorAll('.nav-signed-in')
@@ -174,27 +52,9 @@ function updateNavForUser(user) {
       const displayName = user.user_metadata?.username || user.email?.split('@')[0] || 'User'
       userNameEl.textContent = displayName
     }
-
-    if (_dropdown) _dropdown.remove()
-    buildDropdown(user)
-    attachClickToUsername()
-
-    if (!_clickAwayHandler) {
-      _clickAwayHandler = function (e) {
-        const el = document.getElementById('nav-user-name')
-        if (_dropdown && _dropdown.style.display === 'block' && !_dropdown.contains(e.target) && e.target !== el && !el?.contains(e.target)) {
-          _dropdown.style.display = 'none'
-        }
-      }
-      document.addEventListener('click', _clickAwayHandler)
-    }
   } else {
     signedOutLinks.forEach(el => el.style.display = '')
     signedInLinks.forEach(el => el.style.display = 'none')
-    if (_dropdown) {
-      _dropdown.remove()
-      _dropdown = null
-    }
   }
 }
 
@@ -209,7 +69,7 @@ async function initAuth() {
   })
 
   const style = document.createElement('style')
-  style.textContent = '.nav-signed-in{white-space:nowrap;overflow:visible;width:auto !important;height:auto !important;flex-shrink:0;display:flex;align-items:center}.nav-signed-out{white-space:nowrap}[data-framer-root] nav{position:sticky !important;top:0 !important;z-index:1000 !important}'
+  style.textContent = '.nav-signed-in{white-space:nowrap;overflow:visible;width:auto !important;height:auto !important;flex-shrink:0;display:flex;align-items:center}.nav-signed-out{white-space:nowrap}[data-framer-root]>div:first-child{position:fixed !important;top:0 !important;left:50% !important;transform:translateX(-50%) !important;z-index:1000 !important}[data-framer-root]{padding-top:64px !important}'
   document.head.appendChild(style)
 
   const url = window.location.pathname
@@ -225,7 +85,6 @@ async function initAuth() {
 
     const form = document.getElementById('login-form')
     if (form) {
-      const originalHandler = form._submitHandler
       form.addEventListener('submit', async (e) => {
         e.preventDefault()
         const email = document.getElementById('email').value.trim()
