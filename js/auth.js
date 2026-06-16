@@ -145,6 +145,23 @@ function toggleDropdown(e) {
   }
 }
 
+let _clickHandlerAttached = false
+function attachClickToUsername() {
+  if (_clickHandlerAttached) return
+  const btn = document.getElementById('nav-user-name')
+  if (!btn) return
+  btn.addEventListener('click', toggleDropdown)
+  // Catch clicks on parent <p> (in case framer CSS blocks button events)
+  const p = btn.closest('p')
+  if (p && p !== btn) {
+    p.addEventListener('click', function(e) {
+      if (e.target === btn || e.target.id === 'nav-user-name') return // already handled by button
+      toggleDropdown(e)
+    })
+  }
+  _clickHandlerAttached = true
+}
+
 function updateNavForUser(user) {
   const signedOutLinks = document.querySelectorAll('.nav-signed-out')
   const signedInLinks = document.querySelectorAll('.nav-signed-in')
@@ -160,6 +177,7 @@ function updateNavForUser(user) {
 
     if (_dropdown) _dropdown.remove()
     buildDropdown(user)
+    attachClickToUsername()
 
     if (!_clickAwayHandler) {
       _clickAwayHandler = function (e) {
@@ -191,7 +209,7 @@ async function initAuth() {
   })
 
   const style = document.createElement('style')
-  style.textContent = '.nav-signed-in{white-space:nowrap;overflow:visible;width:auto !important;height:auto !important;flex-shrink:0;display:flex;align-items:center}.nav-signed-out{white-space:nowrap}'
+  style.textContent = '.nav-signed-in{white-space:nowrap;overflow:visible;width:auto !important;height:auto !important;flex-shrink:0;display:flex;align-items:center}.nav-signed-out{white-space:nowrap}[data-framer-root] nav{position:sticky !important;top:0 !important;z-index:1000 !important}'
   document.head.appendChild(style)
 
   const url = window.location.pathname
