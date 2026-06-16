@@ -102,7 +102,7 @@
           return
         }
         try {
-          const redirectTo = window.location.origin + '/The-Official-Relentless-Zombies-Website/en/login/reset-password.html'
+          const redirectTo = window.location.origin + siteRoot() + '/en/login/reset-password.html'
           const { error } = await sb.auth.resetPasswordForEmail(emailVal, { redirectTo })
           if (error) throw error
           showSuccess('Password reset email sent! Check your inbox.')
@@ -124,9 +124,9 @@
           await signIn(email.value.trim(), password.value)
           const { data: factors } = await sb.auth.mfa.listFactors()
           if (factors?.all?.length > 0) {
-            window.location.href = window.location.origin + '/The-Official-Relentless-Zombies-Website/en/login/2fa.html'
+            window.location.href = window.location.origin + siteRoot() + '/en/login/2fa.html'
           } else {
-            window.location.href = window.location.origin + '/The-Official-Relentless-Zombies-Website/en/index.html'
+            window.location.href = window.location.origin + siteRoot() + '/en/index.html'
           }
         } catch (err) {
           showError(err.message)

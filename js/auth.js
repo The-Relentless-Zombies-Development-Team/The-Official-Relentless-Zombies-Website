@@ -5,7 +5,7 @@ async function signIn(email, password) {
 }
 
 async function signUp(username, email, password) {
-  const redirectTo = window.location.origin + '/The-Official-Relentless-Zombies-Website/login.html'
+  const redirectTo = window.location.origin + siteRoot() + '/login.html'
   const { data, error } = await sb.auth.signUp({
     email,
     password,
@@ -19,7 +19,7 @@ async function signOut(e) {
   if (e) e.preventDefault()
   const { error } = await sb.auth.signOut()
   if (error) throw error
-  window.location.href = window.location.origin + '/The-Official-Relentless-Zombies-Website/index.html'
+  window.location.href = window.location.origin + siteRoot() + '/index.html'
 }
 
 async function getSession() {
@@ -69,7 +69,7 @@ async function initAuth() {
   })
 
   const style = document.createElement('style')
-  style.textContent = '.nav-signed-in{white-space:nowrap;overflow:visible;width:auto !important;height:auto !important;flex-shrink:0;display:flex;align-items:center}.nav-signed-out{white-space:nowrap}[data-framer-root]>div:first-of-type{position:fixed !important;top:0 !important;left:50% !important;transform:translateX(-50%) !important;z-index:1000 !important;width:1200px !important;height:64px !important}[data-framer-root]{padding-top:64px !important}.nav-signout-sm a{font-size:25px !important;font-weight:800 !important;line-height:2em !important}'
+  style.textContent = '.nav-signed-in{white-space:nowrap;overflow:visible;width:auto !important;height:auto !important;flex-shrink:0;display:flex;align-items:center}.nav-signed-out{white-space:nowrap}[data-framer-root]>div:first-of-type{position:fixed !important;top:0 !important;left:50% !important;transform:translateX(-50%) !important;z-index:1000 !important;width:1200px !important;height:64px !important}[data-framer-root]{padding-top:64px !important}.nav-signout-sm a{font-size:15px !important;font-weight:500 !important;line-height:2em !important}'
   document.head.appendChild(style)
 
   const url = window.location.pathname
@@ -78,7 +78,7 @@ async function initAuth() {
     if (user) {
       const { data: factors } = await sb.auth.mfa.listFactors()
       if (factors?.all?.length > 0) {
-        window.location.href = window.location.origin + '/The-Official-Relentless-Zombies-Website/login/2fa.html'
+        window.location.href = window.location.origin + siteRoot() + '/login/2fa.html'
         return
       }
     }
@@ -98,10 +98,10 @@ async function initAuth() {
           const data = await signIn(email, password)
           const { data: factors } = await sb.auth.mfa.listFactors()
           if (factors?.all?.length > 0) {
-            window.location.href = window.location.origin + '/The-Official-Relentless-Zombies-Website/login/2fa.html'
+            window.location.href = window.location.origin + siteRoot() + '/login/2fa.html'
           } else {
             const base = window.location.pathname.includes('/en/') ? '/en/index.html' : '/index.html'
-            window.location.href = window.location.origin + '/The-Official-Relentless-Zombies-Website' + base
+            window.location.href = window.location.origin + siteRoot() + base
           }
         } catch (err) {
           if (errorEl) {

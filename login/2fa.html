@@ -55,7 +55,7 @@
 
       const session = await getSession()
       if (!session) {
-        window.location.href = window.location.origin + '/The-Official-Relentless-Zombies-Website/login.html'
+        window.location.href = window.location.origin + siteRoot() + '/login.html'
         return
       }
 
@@ -86,7 +86,7 @@
 
           if (error) throw error
 
-          window.location.href = window.location.origin + '/The-Official-Relentless-Zombies-Website/index.html'
+          window.location.href = window.location.origin + siteRoot() + '/index.html'
         } catch (err) {
           errorEl.textContent = err.message
           errorEl.style.display = 'block'

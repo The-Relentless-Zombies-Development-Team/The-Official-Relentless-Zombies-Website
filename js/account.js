@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const session = await getSession()
   if (!session) {
-    window.location.href = window.location.origin + '/The-Official-Relentless-Zombies-Website/login.html'
+    window.location.href = window.location.origin + siteRoot() + '/login.html'
     return
   }
 
