@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=512">
+  <title>Two-Factor Authentication - Relentless Zombies</title>
+  <meta name="description" content="Enter your two-factor authentication code">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;800&family=Lexend:wght@300;600&display=swap');
+    html, body { margin: 0; padding: 0; background: #000; color: #fff; font-family: 'Inter', sans-serif; }
+    *, *::before, *::after { box-sizing: border-box; }
+    .auth-page { display: flex; min-height: 100vh; align-items: center; justify-content: center; padding: 24px; }
+    .auth-card { background: #111; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 40px; width: 100%; max-width: 420px; }
+    .auth-card h1 { font-family: 'Lexend', sans-serif; font-weight: 300; font-size: 28px; margin: 0 0 8px 0; color: rgb(255, 114, 0); }
+    .auth-card p.subtitle { color: #888; font-size: 14px; margin: 0 0 32px 0; }
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; font-size: 12px; font-weight: 500; color: #888; margin-bottom: 6px; }
+    .form-group input { width: 100%; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; background: rgba(187,187,187,0.1); color: #fff; font-size: 20px; font-family: monospace; text-align: center; letter-spacing: 6px; outline: none; transition: border-color 0.2s; }
+    .form-group input:focus { border-color: rgb(255, 114, 0); }
+    .form-group input::placeholder { color: #555; letter-spacing: 2px; font-size: 14px; }
+    .auth-btn { width: 100%; padding: 12px; border: none; border-radius: 10px; background: rgb(255, 114, 0); color: #000; font-size: 16px; font-weight: 800; font-family: 'Inter', sans-serif; cursor: pointer; transition: opacity 0.2s; }
+    .auth-btn:hover { opacity: 0.85; }
+    .auth-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .auth-error { background: rgba(220, 38, 38, 0.15); border: 1px solid rgba(220, 38, 38, 0.3); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: rgb(255, 100, 100); margin-bottom: 20px; display: none; }
+  </style>
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-card">
+      <h1>Two-factor auth</h1>
+      <p class="subtitle">Enter the code from your authenticator app</p>
+
+      <div class="auth-error" id="error-msg"></div>
+
+      <form id="mfa-form">
+        <div class="form-group">
+          <label for="mfa-code">Authentication Code</label>
+          <input id="mfa-code" type="text" placeholder="000000" maxlength="6" required autocomplete="one-time-code">
+        </div>
+        <button type="submit" class="auth-btn" id="mfa-btn">Verify</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/supabase-init.js"></script>
+  <script src="../js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const form = document.getElementById('mfa-form')
+      const codeInput = document.getElementById('mfa-code')
+      const btn = document.getElementById('mfa-btn')
+      const errorEl = document.getElementById('error-msg')
+
+      const session = await getSession()
+      if (!session) {
+        window.location.href = window.location.origin + '/The-Official-Relentless-Zombies-Website/login.html'
+        return
+      }
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault()
+        errorEl.style.display = 'none'
+        btn.disabled = true
+        btn.textContent = 'Verifying...'
+
+        const code = codeInput.value.trim()
+        if (!code || code.length !== 6) {
+          errorEl.textContent = 'Please enter a valid 6-digit code.'
+          errorEl.style.display = 'block'
+          btn.disabled = false
+          btn.textContent = 'Verify'
+          return
+        }
+
+        try {
+          const { data: factors } = await sb.auth.mfa.listFactors()
+          const totpFactor = factors?.totp?.[0]
+          if (!totpFactor) throw new Error('No MFA factor found. Please log in again.')
+
+          const { error } = await sb.auth.mfa.challengeAndVerify({
+            factorId: totpFactor.id,
+            code,
+          })
+
+          if (error) throw error
+
+          window.location.href = window.location.origin + '/The-Official-Relentless-Zombies-Website/index.html'
+        } catch (err) {
+          errorEl.textContent = err.message
+          errorEl.style.display = 'block'
+          btn.disabled = false
+          btn.textContent = 'Verify'
+        }
+      })
+    })
+  </script>
+</body>
+</html>

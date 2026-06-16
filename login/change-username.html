@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=512">
+  <title>Change Username - Relentless Zombies</title>
+  <meta name="description" content="Confirm your username change">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;800&family=Lexend:wght@300;600&display=swap');
+    html, body { margin: 0; padding: 0; background: #000; color: #fff; font-family: 'Inter', sans-serif; }
+    *, *::before, *::after { box-sizing: border-box; }
+    .auth-page { display: flex; min-height: 100vh; align-items: center; justify-content: center; padding: 24px; }
+    .auth-card { background: #111; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 40px; width: 100%; max-width: 420px; text-align: center; }
+    .auth-card h1 { font-family: 'Lexend', sans-serif; font-weight: 300; font-size: 28px; margin: 0 0 8px 0; color: rgb(255, 114, 0); }
+    .auth-card p.subtitle { color: #888; font-size: 14px; margin: 0 0 32px 0; }
+    .auth-success { background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: rgb(34, 197, 94); margin-bottom: 20px; display: none; }
+    .auth-error { background: rgba(220, 38, 38, 0.15); border: 1px solid rgba(220, 38, 38, 0.3); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: rgb(255, 100, 100); margin-bottom: 20px; display: none; }
+    .auth-links { margin-top: 24px; font-size: 13px; color: #888; }
+    .auth-links a { color: rgb(255, 114, 0); text-decoration: none; }
+    .auth-links a:hover { text-decoration: underline; }
+    html, body { background: #000; }
+  </style>
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-card">
+      <h1>Confirm username change</h1>
+      <p class="subtitle" id="status-text">Verifying your confirmation link...</p>
+
+      <div class="auth-error" id="error-msg"></div>
+      <div class="auth-success" id="success-msg"></div>
+
+      <div id="result-container"></div>
+
+      <div class="auth-links">
+        <p><a href="../account.html">Back to account settings</a></p>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/supabase-init.js"></script>
+  <script src="../js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const statusText = document.getElementById('status-text')
+      const errorEl = document.getElementById('error-msg')
+      const successEl = document.getElementById('success-msg')
+      const resultContainer = document.getElementById('result-container')
+
+      function showError(msg) {
+        errorEl.textContent = msg; errorEl.style.display = 'block'; successEl.style.display = 'none'
+      }
+      function showSuccess(msg) {
+        successEl.textContent = msg; successEl.style.display = 'block'; errorEl.style.display = 'none'
+      }
+
+      const params = new URLSearchParams(window.location.search)
+      const token = params.get('token')
+      const uid = params.get('uid')
+
+      if (!token || !uid) {
+        statusText.textContent = 'Invalid link.'
+        showError('Missing confirmation parameters.')
+        return
+      }
+
+      try {
+        const session = await getSession()
+        if (!session || session.user.id !== uid) {
+          showError('Please log in with the account that requested the username change.')
+          statusText.textContent = 'Please log in first.'
+          return
+        }
+
+        const res = await fetch(
+          'https://qyoortkrlfxzuzjxwfge.supabase.co/rest/v1/username_change_tokens?select=*&token=eq.' + token + '&used=eq.false',
+          {
+            headers: {
+              'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5b29ydGtybGZ4enV6anh3ZmdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNjkyNjEsImV4cCI6MjA5NjY0NTI2MX0.B0CY8sKEaehSQp2BwUGZ5jABYHwjcBy9cS2I8fEeXso',
+              'Authorization': 'Bearer ' + session.access_token,
+            },
+          }
+        )
+        const tokens = await res.json()
+
+        if (!tokens || tokens.length === 0) {
+          statusText.textContent = 'Link expired or already used.'
+          showError('This confirmation link is invalid or has expired.')
+          return
+        }
+
+        const tokenRecord = tokens[0]
+        if (new Date(tokenRecord.expires_at) < new Date()) {
+          statusText.textContent = 'Link expired.'
+          showError('This confirmation link has expired. Please request a new one.')
+          return
+        }
+
+        const newUsername = tokenRecord.new_username
+
+        const { error: updateError } = await sb.auth.updateUser({
+          data: { username: newUsername, last_username_change_at: new Date().toISOString() },
+        })
+
+        if (updateError) throw updateError
+
+        const { error: markUsedError } = await fetch(
+          'https://qyoortkrlfxzuzjxwfge.supabase.co/rest/v1/username_change_tokens?id=eq.' + tokenRecord.id,
+          {
+            method: 'PATCH',
+            headers: {
+              'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5b29ydGtybGZ4enV6anh3ZmdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNjkyNjEsImV4cCI6MjA5NjY0NTI2MX0.B0CY8sKEaehSQp2BwUGZ5jABYHwjcBy9cS2I8fEeXso',
+              'Authorization': 'Bearer ' + session.access_token,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ used: true }),
+          }
+        )
+
+        statusText.textContent = 'Username changed!'
+        successEl.textContent = 'Your username has been changed to ' + newUsername + '!'
+        successEl.style.display = 'block'
+
+        resultContainer.innerHTML = '<p style="color:#888;font-size:13px;margin-top:16px">You can now use your new username across the site.</p>'
+      } catch (err) {
+        statusText.textContent = 'Something went wrong.'
+        showError(err.message)
+      }
+    })
+  </script>
+</body>
+</html>

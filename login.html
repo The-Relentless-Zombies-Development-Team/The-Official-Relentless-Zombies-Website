@@ -122,7 +122,12 @@
 
         try {
           await signIn(email.value.trim(), password.value)
-          window.location.href = window.location.origin + '/The-Official-Relentless-Zombies-Website/index.html'
+          const { data: factors } = await sb.auth.mfa.listFactors()
+          if (factors?.all?.length > 0) {
+            window.location.href = window.location.origin + '/The-Official-Relentless-Zombies-Website/login/2fa.html'
+          } else {
+            window.location.href = window.location.origin + '/The-Official-Relentless-Zombies-Website/index.html'
+          }
         } catch (err) {
           showError(err.message)
           btn.disabled = false

@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=512">
+  <title>Manage Account - Relentless Zombies</title>
+  <meta name="description" content="Manage your Relentless Zombies account">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;800&family=Lexend:wght@300;600&display=swap');
+    html, body { margin: 0; padding: 0; background: #000; color: #fff; font-family: 'Inter', sans-serif; }
+    *, *::before, *::after { box-sizing: border-box; }
+    .account-page { display: flex; min-height: 100vh; }
+    .sidebar { width: 240px; background: #111; border-right: 1px solid rgba(255,255,255,0.08); padding: 24px 0; flex-shrink: 0; }
+    .sidebar h2 { font-family: 'Lexend', sans-serif; font-weight: 300; font-size: 18px; color: rgb(255, 114, 0); margin: 0 0 8px 0; padding: 0 20px; }
+    .sidebar .nav-item { display: block; padding: 10px 20px; color: #888; text-decoration: none; font-size: 14px; transition: all 0.15s; cursor: pointer; border-left: 3px solid transparent; }
+    .sidebar .nav-item:hover { color: #fff; background: rgba(255,255,255,0.03); }
+    .sidebar .nav-item.active { color: #fff; border-left-color: rgb(255, 114, 0); background: rgba(255,114,0,0.05); }
+    .content { flex: 1; padding: 32px 40px; max-width: 720px; }
+    .content h1 { font-family: 'Lexend', sans-serif; font-weight: 300; font-size: 24px; margin: 0 0 24px 0; color: #fff; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; font-size: 12px; font-weight: 500; color: #888; margin-bottom: 6px; }
+    .form-group input { width: 100%; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; background: rgba(187,187,187,0.1); color: #fff; font-size: 14px; font-family: 'Inter', sans-serif; outline: none; transition: border-color 0.2s; }
+    .form-group input:focus { border-color: rgb(255, 114, 0); }
+    .form-group input::placeholder { color: #666; }
+    .auth-btn { padding: 12px 24px; border: none; border-radius: 10px; background: rgb(255, 114, 0); color: #000; font-size: 14px; font-weight: 800; font-family: 'Inter', sans-serif; cursor: pointer; transition: opacity 0.2s; }
+    .auth-btn:hover { opacity: 0.85; }
+    .auth-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .auth-btn.green { background: rgb(19, 120, 38); }
+    .auth-btn.outline { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: #fff; }
+    .auth-btn.outline:hover { background: rgba(255,255,255,0.05); }
+    .auth-btn.danger { background: transparent; border: 1px solid rgb(255, 114, 0); color: rgb(255, 114, 0); }
+    .auth-btn.danger:hover { background: rgba(255, 114, 0, 0.1); }
+    .auth-error { background: rgba(220, 38, 38, 0.15); border: 1px solid rgba(220, 38, 38, 0.3); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: rgb(255, 100, 100); margin-bottom: 20px; display: none; }
+    .auth-success { background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: rgb(34, 197, 94); margin-bottom: 20px; display: none; }
+    .info-box { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 14px; margin-bottom: 20px; font-size: 13px; color: #888; }
+    .info-box strong { color: #ccc; }
+    .section-title { font-size: 16px; font-weight: 600; margin: 24px 0 12px 0; color: #fff; }
+    .back-link { position: fixed; top: 20px; left: 20px; z-index: 10; }
+    .back-link a { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; background: rgba(255,255,255,0.08); border-radius: 8px; transition: background 0.2s; }
+    .back-link a:hover { background: rgba(255,255,255,0.15); }
+    .back-link svg { stroke: #fff; }
+    .pw-reqs { list-style: none; padding: 0; margin: 8px 0 0 0; font-size: 12px; display: block !important; }
+    .pw-reqs li { color: #666; padding: 2px 0; transition: color 0.2s; display: list-item !important; }
+    .pw-reqs li::before { content: '\25CB'; margin-right: 6px; display: inline-block; width: 12px; text-align: center; }
+    .pw-reqs li.met { color: rgb(19, 120, 38) !important; }
+    .pw-reqs li.met::before { content: '\25CF'; }
+    .pw-reqs li.fail { color: rgb(255, 114, 0) !important; }
+    .pw-reqs li.fail::before { content: '\25CB'; }
+    .mfa-status { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; }
+    .mfa-status.enrolled { background: rgba(19, 120, 38, 0.1); border: 1px solid rgba(19, 120, 38, 0.3); color: rgb(19, 120, 38); }
+    .mfa-status.not-enrolled { background: rgba(255, 114, 0, 0.1); border: 1px solid rgba(255, 114, 0, 0.3); color: rgb(255, 114, 0); }
+    .mfa-setup { display: none; }
+    .mfa-setup.active { display: block; }
+    .mfa-qr { text-align: center; padding: 16px; }
+    .mfa-qr img { border-radius: 8px; background: #fff; padding: 8px; }
+    .username-display { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 16px; }
+    .username-display span { font-size: 16px; font-weight: 500; }
+    .username-display .cooldown { font-size: 12px; color: #888; }
+    @media (max-width: 768px) { .account-page { flex-direction: column; } .sidebar { width: 100%; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.08); padding: 16px 0; } .sidebar .nav-item { display: inline-block; border-left: none; border-bottom: 2px solid transparent; } .sidebar .nav-item.active { border-left: none; border-bottom-color: rgb(255, 114, 0); } .content { padding: 24px 20px; } }
+  </style>
+</head>
+<body>
+  <div class="back-link">
+    <a href="index.html" aria-label="Go back">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/>
+      </svg>
+    </a>
+  </div>
+
+  <div class="account-page">
+    <div class="sidebar">
+      <h2>Account</h2>
+      <a class="nav-item active" data-tab="profile">Profile</a>
+      <a class="nav-item" data-tab="security">Security</a>
+    </div>
+    <div class="content">
+      <div class="auth-error" id="error-msg"></div>
+      <div class="auth-success" id="success-msg"></div>
+
+      <!-- Profile Tab -->
+      <div class="tab-content active" id="tab-profile">
+        <h1>Profile</h1>
+
+        <div class="section-title">Username</div>
+        <div class="username-display">
+          <span id="current-username">Loading...</span>
+        </div>
+        <div id="username-cooldown-info" class="info-box" style="display:none">
+          You can change your username again after <strong id="cooldown-date"></strong>
+        </div>
+        <button class="auth-btn" id="change-username-btn">Change Username</button>
+
+        <div id="username-change-form" style="display:none;margin-top:16px">
+          <div class="form-group">
+            <label for="new-username">New Username</label>
+            <input id="new-username" type="text" placeholder="Enter new username..." maxlength="16">
+          </div>
+          <div id="mfa-username-section" style="display:none">
+            <div class="form-group">
+              <label for="username-password">Confirm Password</label>
+              <input id="username-password" type="password" placeholder="Enter your password...">
+            </div>
+            <div class="form-group">
+              <label for="username-mfa-code">Authenticator Code</label>
+              <input id="username-mfa-code" type="text" placeholder="Enter 6-digit code..." maxlength="6">
+            </div>
+          </div>
+          <button class="auth-btn" id="send-username-change-btn">Send Confirmation Email</button>
+          <button class="auth-btn outline" id="cancel-username-change" style="margin-left:8px">Cancel</button>
+        </div>
+
+        <div class="section-title">Email</div>
+        <div class="form-group">
+          <label>Current Email</label>
+          <input id="current-email" type="email" readonly style="opacity:0.6;cursor:not-allowed">
+        </div>
+      </div>
+
+      <!-- Security Tab -->
+      <div class="tab-content" id="tab-security">
+        <h1>Security</h1>
+
+        <div class="section-title">Change Password</div>
+        <form id="change-password-form">
+          <div class="form-group">
+            <label for="current-password">Current Password</label>
+            <input id="current-password" type="password" placeholder="Enter current password..." required>
+          </div>
+          <div class="form-group">
+            <label for="new-password">New Password</label>
+            <input id="new-password" type="password" placeholder="Enter new password..." required minlength="8">
+            <ul class="pw-reqs" id="pw-reqs">
+              <li id="req-length">At least 8 characters</li>
+              <li id="req-lower">One lowercase letter</li>
+              <li id="req-upper">One uppercase letter</li>
+              <li id="req-number">One number</li>
+              <li id="req-special">One special character</li>
+            </ul>
+          </div>
+          <button type="submit" class="auth-btn" id="change-password-btn">Update Password</button>
+        </form>
+
+        <div class="section-title">Two-Factor Authentication (2FA)</div>
+        <div id="mfa-status-container"></div>
+        <div id="mfa-setup-container" class="mfa-setup"></div>
+        <button class="auth-btn green" id="setup-mfa-btn" style="display:none">Enable 2FA</button>
+        <button class="auth-btn danger" id="disable-mfa-btn" style="display:none">Disable 2FA</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-init.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/account.js"></script>
+</body>
+</html>
