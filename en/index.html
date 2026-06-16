@@ -130,17 +130,32 @@
     <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
 	    
     <!-- End of headEnd -->
+
+    <link rel="stylesheet" href="css/site.css">
 </head>
 <body>
+<!-- Start of bodyStart -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-init.js"></script>
+    <script src="js/auth.js"></script>
+    <!-- End of bodyStart -->
+
 	<!-- Start of bodyStart -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../js/supabase-init.js"></script>
     <script src="../js/auth.js"></script>
     <!-- End of bodyStart -->
 	
-	<div id="main"><style>html body { background: rgb(0, 0, 0); }</style><div style="min-height:100vh;width:auto"><div><nav style="background-color:rgb(0,0,0);height:100%;width:100%"><div><div id="nav-logo"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ff7200" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><path d="m12.5 17-.5-1-.5 1h1z"/><path d="M15 22a1 1 0 0 0 1-1v-1a2 2 0 0 0 1.56-3.25 8 8 0 1 0-11.12 0A2 2 0 0 0 8 20v1a1 1 0 0 0 1 1z"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="12" r="1"/></svg></div></div><div><div class="nav-signed-out"><a href="login.html" style="font-family:Inter,sans-serif;font-size:25px;font-weight:800;color:#fff;text-decoration:none;letter-spacing:-0.2px">LOG IN</a></div><div class="nav-signed-in" style="display:none"><a href="#" id="nav-user-name" style="font-family:Inter,sans-serif;font-size:15px;font-weight:500;color:#ff7200;text-decoration:none">User</a></div><div class="nav-signed-out"><a href="login/signup.html" style="font-family:Inter,sans-serif;font-size:25px;font-weight:800;color:#fff;text-decoration:none;letter-spacing:-0.2px">SIGN UP</a></div>
-
+	<div id="main" data-framer-hydrate-v2="{&quot;routeId&quot;:&quot;augiA20Il&quot;,&quot;localeId&quot;:&quot;N6t0n49pa&quot;,&quot;breakpoints&quot;:[{&quot;hash&quot;:&quot;72rtr7&quot;}]}" data-framer-ssr-released-at="2026-06-05T22:30:30.720Z" data-framer-page-optimized-at="2026-06-09T17:29:23.859Z" data-framer-generated-page><style data-framer-html-style>html body { background: rgb(0, 0, 0); }</style><div data-framer-root class="framer-t667W framer-72rtr7" style="min-height:100vh;width:auto"><div class="framer-hr5cw9-container"><nav class="framer-SJqHS framer-mw4sn framer-3hS73 framer-uQBff framer-JCzHX framer-jg69J framer-K50fR framer-1k0lwuw framer-v-1k0lwuw" style="background-color:rgb(0, 0, 0);height:100%;width:100%"><div class="framer-fqrpvg"><div class="framer-1o9oyos-container" id="nav-logo"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ff7200" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block"><path d="m12.5 17-.5-1-.5 1h1z"/><path d="M15 22a1 1 0 0 0 1-1v-1a2 2 0 0 0 1.56-3.25 8 8 0 1 0-11.12 0A2 2 0 0 0 8 20v1a1 1 0 0 0 1 1z"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="12" r="1"/></svg></div></div><div class="framer-4jap0m"><div class="framer-w99q90 nav-signed-out" data-framer-component-type="RichTextContainer" tabindex="0" style="--extracted-r6o4lv:rgb(255, 255, 255);--framer-paragraph-spacing:0px;transform:none"><p dir="auto" class="framer-text" style="--font-selector:SW50ZXItRXh0cmFCb2xk;--framer-font-size:25px;--framer-font-weight:800;--framer-letter-spacing:-0.2px;--framer-line-height:2em;--framer-text-alignment:center;--framer-text-color:var(--extracted-r6o4lv, rgb(255, 255, 255))"><a class="framer-text framer-styles-preset-7uouqm" href="login.html">LOG IN</a></p></div>
+<div class="framer-w99q90 nav-signed-in" data-framer-component-type="RichTextContainer" tabindex="0" style="display:none;white-space:nowrap;overflow:visible;width:auto;--extracted-r6o4lv:rgb(255, 255, 255);--framer-paragraph-spacing:0px;transform:none"><p dir="auto" class="framer-text" style="--font-selector:SW50ZXItTWVkaXVt;--framer-font-size:15px;--framer-font-weight:500;--framer-letter-spacing:-0.2px;--framer-line-height:2em;--framer-text-alignment:center;--framer-text-color:var(--extracted-r6o4lv, rgb(255, 255, 255))"><a class="framer-text framer-styles-preset-7uouqm" href="#" id="nav-user-name" style="color:rgb(255, 114, 0)">User</a></p></div><div class="framer-ueymt0 nav-signed-out" data-framer-component-type="RichTextContainer" tabindex="0" style="--extracted-r6o4lv:rgb(255, 255, 255);--framer-paragraph-spacing:0px;transform:none"><p dir="auto" class="framer-text" style="--font-selector:SW50ZXItRXh0cmFCb2xk;--framer-font-size:25px;--framer-font-weight:800;--framer-letter-spacing:-0.2px;--framer-line-height:2em;--framer-text-alignment:center;--framer-text-color:var(--extracted-r6o4lv, rgb(255, 255, 255))"><a class="framer-text framer-styles-preset-7uouqm" href="login/signup.html">SIGN UP</a></p></div> style="color:rgb(19, 120, 38)"
+	
+	
 		<!-- Start of bodyEnd -->
+    
+    <!-- End of bodyEnd -->
+
+
+<!-- Start of bodyEnd -->
     
     <!-- End of bodyEnd -->
 </body>
