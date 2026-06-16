@@ -77,7 +77,7 @@ async function initAuth() {
     const { data: { user } } = await sb.auth.getUser()
     if (user) {
       const { data: factors } = await sb.auth.mfa.listFactors()
-      if (factors?.all?.length > 0) {
+      if (factors?.totp?.length > 0) {
         window.location.href = window.location.origin + siteRoot() + '/login/2fa.html'
         return
       }
@@ -97,7 +97,7 @@ async function initAuth() {
           btn.textContent = 'Logging in...'
           const data = await signIn(email, password)
           const { data: factors } = await sb.auth.mfa.listFactors()
-          if (factors?.all?.length > 0) {
+          if (factors?.totp?.length > 0) {
             window.location.href = window.location.origin + siteRoot() + '/login/2fa.html'
           } else {
             const base = window.location.pathname.includes('/en/') ? '/en/index.html' : '/index.html'
