@@ -223,6 +223,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   await loadMFAStatus()
 
+  // Refresh MFA status when tab becomes visible again
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) loadMFAStatus()
+  })
+
   // Setup MFA (TOTP)
   document.getElementById('setup-mfa-btn')?.addEventListener('click', async () => {
     hideMessages()
@@ -234,12 +239,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (error) throw error
 
       const factorId = data.id
-      const qrCode = data.totp.qr_code
+      const qrCode = data.totp?.qr_code
+      const secret = data.totp?.secret
+
+      let qrHtml = ''
+      if (qrCode) {
+        qrHtml = `<img src="${qrCode}" alt="QR Code" width="200" height="200">`
+      } else if (secret) {
+        qrHtml = `<p style="color:#888;font-size:13px;word-break:break-all;font-family:monospace">Manual setup key: ${secret}</p>`
+      }
 
       setupContainer.innerHTML = `
         <div class="mfa-qr">
           <p style="color:#888;font-size:13px;margin-bottom:12px">Scan this QR code with your authenticator app (e.g. Google Authenticator, Authy)</p>
-          <img src="${qrCode}" alt="QR Code" width="200" height="200">
+          ${qrHtml}
         </div>
         <div class="form-group">
           <label for="mfa-verify-code">Enter the 6-digit code from your authenticator app</label>
