@@ -145,6 +145,14 @@ function toggleDropdown(e) {
   }
 }
 
+// Event delegation: catches clicks on #nav-user-name regardless of DOM state
+document.addEventListener('click', function(e) {
+  const target = e.target.closest('#nav-user-name')
+  if (target) {
+    toggleDropdown(e)
+  }
+})
+
 function updateNavForUser(user) {
   const signedOutLinks = document.querySelectorAll('.nav-signed-out')
   const signedInLinks = document.querySelectorAll('.nav-signed-in')
@@ -160,10 +168,6 @@ function updateNavForUser(user) {
 
     if (_dropdown) _dropdown.remove()
     buildDropdown(user)
-
-    if (userNameEl) {
-      userNameEl.onclick = toggleDropdown
-    }
 
     if (!_clickAwayHandler) {
       _clickAwayHandler = function (e) {
