@@ -129,6 +129,22 @@ function positionDropdown(el) {
   _dropdown.style.left = Math.max(8, Math.min(rect.left + rect.width / 2 - 100, window.innerWidth - 208)) + 'px'
 }
 
+function toggleDropdown(e) {
+  if (e) e.preventDefault()
+  if (!_dropdown || !document.body.contains(_dropdown)) {
+    const u = sb.auth.user()
+    if (u) buildDropdown(u)
+  }
+  if (!_dropdown) return
+  if (_dropdown.style.display === 'block') {
+    _dropdown.style.display = 'none'
+  } else {
+    const el = document.getElementById('nav-user-name')
+    if (el) positionDropdown(el)
+    _dropdown.style.display = 'block'
+  }
+}
+
 function updateNavForUser(user) {
   const signedOutLinks = document.querySelectorAll('.nav-signed-out')
   const signedInLinks = document.querySelectorAll('.nav-signed-in')
@@ -146,15 +162,7 @@ function updateNavForUser(user) {
     buildDropdown(user)
 
     if (userNameEl) {
-      userNameEl.onclick = function (e) {
-        e.preventDefault()
-        if (_dropdown.style.display === 'block') {
-          _dropdown.style.display = 'none'
-        } else {
-          positionDropdown(userNameEl)
-          _dropdown.style.display = 'block'
-        }
-      }
+      userNameEl.onclick = toggleDropdown
     }
 
     if (!_clickAwayHandler) {
