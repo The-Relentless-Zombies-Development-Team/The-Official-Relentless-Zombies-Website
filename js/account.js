@@ -203,7 +203,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const { data, error } = await sb.auth.mfa.listFactors()
     if (error) return
 
-    const enrolled = data?.all?.length > 0
+    // Clear any stale setup HTML
+    const setupContainer = document.getElementById('mfa-setup-container')
+    setupContainer.classList.remove('active')
+    setupContainer.innerHTML = ''
+
+    const enrolled = data?.totp?.length > 0
 
     if (enrolled) {
       container.innerHTML = '<div class="mfa-status enrolled">Two-factor authentication is enabled</div>'
@@ -280,15 +285,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     hideMessages()
     const { data } = await sb.auth.mfa.listFactors()
     const totpFactor = data?.totp?.[0]
+    const anyFactor = data?.all?.[0]
 
-    if (!totpFactor) {
+    if (!totpFactor && !anyFactor) {
       showError('No MFA factor found.')
       return
     }
 
     if (!confirm('Are you sure you want to disable two-factor authentication?')) return
 
-    const { error } = await sb.auth.mfa.unenroll({ factorId: totpFactor.id })
+    const factorId = totpFactor?.id || anyFactor?.id
+    const { error } = await sb.auth.mfa.unenroll({ factorId })
     if (error) {
       showError(error.message)
       return
