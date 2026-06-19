@@ -123,7 +123,7 @@
         try {
           await signIn(email.value.trim(), password.value)
           const { data: factors } = await sb.auth.mfa.listFactors()
-          if (factors?.all?.length > 0) {
+          if (factors?.totp?.length > 0) {
             window.location.href = window.location.origin + siteRoot() + '/en/login/2fa.html'
           } else {
             window.location.href = window.location.origin + siteRoot() + '/en/index.html'

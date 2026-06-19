@@ -37,9 +37,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Username change cooldown check
   const lastChange = user.user_metadata?.last_username_change_at
-  const TWO_WEEKS = 14 * 24 * 60 * 60 * 1000
+  const ONE_WEEK = 7 * 24 * 60 * 60 * 1000
   if (lastChange) {
-    const cooldownEnd = new Date(new Date(lastChange).getTime() + TWO_WEEKS)
+    const cooldownEnd = new Date(new Date(lastChange).getTime() + ONE_WEEK)
     if (Date.now() < cooldownEnd.getTime()) {
       document.getElementById('username-cooldown-info').style.display = 'block'
       document.getElementById('cooldown-date').textContent = cooldownEnd.toLocaleDateString()
@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('username-change-form').style.display = 'block'
     // Check if MFA is enrolled
     sb.auth.mfa.listFactors().then(({ data, error }) => {
-      if (!error && data?.all?.length > 0) {
+      if (!error && data?.totp?.length > 0) {
         document.getElementById('mfa-username-section').style.display = 'block'
       }
     })
@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // If MFA enrolled, verify password + MFA code first
     const { data: factors } = await sb.auth.mfa.listFactors()
-    if (factors?.all?.length > 0) {
+    if (factors?.totp?.length > 0) {
       const password = document.getElementById('username-password').value
       const code = document.getElementById('username-mfa-code').value
 
