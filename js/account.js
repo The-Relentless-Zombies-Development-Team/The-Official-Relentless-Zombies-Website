@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const token = (await getSession()).access_token
     try {
       const res = await fetch(
-        'https://prvydgkzymdtacisxfzz.supabase.co/functions/v1/send-username-change',
+        'https://qyoortkrlfxzuzjxwfge.supabase.co/functions/v1/send-username-change',
         {
           method: 'POST',
           headers: {
