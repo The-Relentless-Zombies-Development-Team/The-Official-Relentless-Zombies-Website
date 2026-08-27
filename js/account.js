@@ -253,18 +253,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       const uri = totp.uri
 
       let qrHtml = ''
-      if (qrCode && qrCode.startsWith('data:')) {
-        qrHtml = `<img src="${qrCode}" alt="QR Code" width="200" height="200" style="display:block;margin:0 auto;border-radius:8px">`
-      } else if (uri) {
-        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(uri)}`
-        qrHtml = `<img src="${qrUrl}" alt="QR Code" width="200" height="200" style="display:block;margin:0 auto;border-radius:8px"><p style="color:#666;font-size:11px;word-break:break-all;font-family:monospace;margin-top:12px">Key: ${secret || ''}</p>`
-      } else if (secret) {
-        qrHtml = `<p style="color:#888;font-size:13px;word-break:break-all;font-family:monospace">Manual setup key: ${secret}</p><p style="color:#666;font-size:11px;margin-top:8px">Enter this key in your authenticator app if you can't scan the QR.</p>`
-      } else if (qrCode) {
-        // Fallback: qr_code is otpauth:// URI, generate QR via external service
-        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrCode)}`
+      const otpUri = uri || qrCode || ''
+      if (otpUri && (otpUri.startsWith('otpauth://') || otpUri.startsWith('data:'))) {
+        const qrUrl = otpUri.startsWith('data:') ? otpUri : `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpUri)}`
         qrHtml = `<img src="${qrUrl}" alt="QR Code" width="200" height="200" style="display:block;margin:0 auto;border-radius:8px">`
         if (secret) qrHtml += `<p style="color:#666;font-size:11px;word-break:break-all;font-family:monospace;margin-top:12px">Key: ${secret}</p>`
+      } else if (secret) {
+        qrHtml = `<p style="color:#888;font-size:13px;word-break:break-all;font-family:monospace">Manual setup key: ${secret}</p><p style="color:#666;font-size:11px;margin-top:8px">Enter this key in your authenticator app if you can't scan the QR.</p>`
       }
 
       setupContainer.innerHTML = `
