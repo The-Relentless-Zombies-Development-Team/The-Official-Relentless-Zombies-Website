@@ -48,6 +48,42 @@ serve(async (req) => {
       })
     }
 
+    // Server-side cooldown check (7 days)
+    const lastChange = user.user_metadata?.last_username_change_at
+    const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000
+    if (lastChange) {
+      const cooldownEnd = new Date(new Date(lastChange).getTime() + SEVEN_DAYS)
+      if (Date.now() < cooldownEnd.getTime()) {
+        return new Response(JSON.stringify({ error: `Username change on cooldown until ${cooldownEnd.toLocaleDateString()}` }), {
+          status: 409,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        })
+      }
+    }
+
+    // Check username uniqueness by listing users
+    const { data: allUsers, error: listError } = await supabase.auth.admin.listUsers({
+      perPage: 100,
+    })
+    if (listError) throw listError
+    const usernameTaken = allUsers.users.some(
+      u => u.user_metadata?.username?.toLowerCase() === newUsername.toLowerCase()
+    )
+    if (usernameTaken) {
+      return new Response(JSON.stringify({ error: "Username already taken" }), {
+        status: 409,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      })
+    }
+
+    // Delete any previous unused tokens for this user
+    const { error: cleanupError } = await supabase
+      .from("username_change_tokens")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("used", false)
+    if (cleanupError) throw cleanupError
+
     const oldUsername = user.user_metadata?.username || user.email?.split("@")[0] || "Player"
     const confirmationToken = crypto.randomUUID()
     const confirmUrl = `${BASE_URL}/login/change-username.html?token=${confirmationToken}&uid=${user.id}`
@@ -89,7 +125,7 @@ serve(async (req) => {
 
     const broadcastData = await broadcastRes.json()
 
-    return new Response(JSON.stringify({ success: true, broadcastData }), {
+    return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     })

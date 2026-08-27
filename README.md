@@ -55,17 +55,32 @@ The site is fully static (no build step). Edit HTML/CSS/JS directly and push to 
 - `js/auth.js` — sign in/up/out, session handling, nav auth state, navbar fixed CSS injection, login-page MFA redirect
 - `js/account.js` — username change, password change, MFA enroll/verify/disable, status refresh
 - `js/fanart.js` — fan art upload and gallery
-- `js/2fa.js` — TOTP verification on challenge page
+- 2FA logic is inline in `en/login/2fa.html` and `login/2fa.html` (no separate `js/2fa.js` file)
 
 ### Navbar maintenance
 
 When editing nav links, update **all 6 pages**: `index.html`, `en/index.html`, `updates.html`, `en/updates.html`, `fanart.html`, `account.html`.  
 The nav uses home-page framer classes (`framer-SJqHS`, `framer-4jap0m`, `framer-fqrpvg`) which exist in `site.css` — avoid using page-specific nav classes (e.g. `framer-awE7j`, `framer-1xjy48w-container` children).
 
+### Client-side cooldown
+
+Username change cooldown is now 7 days (reduced from 14). The cooldown is enforced both client-side (via `user_metadata.last_username_change_at`) and server-side (via `send-username-change` Edge Function). Ensure both are in sync.
+
 ### Deployment
 
 Push to `main` → GitHub Actions deploys to GitHub Pages.  
 Cloudflare proxying caches assets — hard refresh (Cmd+Shift+R) may be needed to see changes.
+
+### Environment variables
+
+Required Supabase Edge Function environment vars (set in Supabase Dashboard → Functions → Secrets):
+
+- `RESEND_API_KEY` — Resend API key for email broadcasts
+- `RESEND_AUDIENCE_ID` — Resend audience ID for contact management
+- `RESEND_BROADCAST_ID` — Resend broadcast ID for email templates
+- `SEND_EMAIL_HOOK_SECRET` — Webhook secret for Supabase Auth email hooks (required; function will return 500 if unset)
+- `SUPABASE_URL` — Supabase project URL (e.g. `https://qyoortkrlfxzuzjxwfge.supabase.co`)
+- `SUPABASE_SERVICE_ROLE_KEY` — Supabase service role key for admin operations
 
 ## Relevant Files
 
@@ -73,3 +88,4 @@ Cloudflare proxying caches assets — hard refresh (Cmd+Shift+R) may be needed t
 - `js/account.js` — MFA status/enroll/disable, QR code fallback, visibilitychange listener
 - `index.html`, `updates.html`, `en/index.html`, `en/updates.html` — nav structures per page
 - `css/site.css` — framer-generated styling (73KB, single line)
+- `supabase/migrations/` — SQL migrations (00001–00004)

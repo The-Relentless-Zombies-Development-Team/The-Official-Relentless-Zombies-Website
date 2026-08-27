@@ -34,12 +34,25 @@ async function loadGallery() {
     const caption = img.caption || ''
     const author = img.username || ''
 
-    item.innerHTML = `
-      <img src="${publicUrl}" alt="${caption || 'Fan art'}" loading="lazy"
-        onclick="openModal('${publicUrl.replace(/'/g, "\\'")}', '${caption.replace(/'/g, "\\'")}')">
-      <div class="author">${author}</div>
-      ${caption ? `<div class="caption">${caption}</div>` : ''}
-    `
+    const imgEl = document.createElement('img')
+    imgEl.src = publicUrl
+    imgEl.alt = caption || 'Fan art'
+    imgEl.loading = 'lazy'
+    imgEl.onclick = () => openModal(publicUrl, caption)
+    item.appendChild(imgEl)
+
+    const authorDiv = document.createElement('div')
+    authorDiv.className = 'author'
+    authorDiv.textContent = author
+    item.appendChild(authorDiv)
+
+    if (caption) {
+      const capDiv = document.createElement('div')
+      capDiv.className = 'caption'
+      capDiv.textContent = caption
+      item.appendChild(capDiv)
+    }
+
     grid.appendChild(item)
   }
 }

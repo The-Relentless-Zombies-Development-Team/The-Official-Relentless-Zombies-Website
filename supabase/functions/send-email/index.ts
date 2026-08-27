@@ -121,12 +121,19 @@ Deno.serve(async (req) => {
     if (hookSecret) {
       const wh = new Webhook(hookSecret.replace("v1,whsec_", ""))
       const verified = wh.verify(payload, headers) as any
+      if (!verified) {
+        return new Response(JSON.stringify({ error: "Invalid webhook signature" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        })
+      }
       user = verified.user
       emailData = verified.email_data
     } else {
-      const parsed = JSON.parse(payload)
-      user = parsed.user
-      emailData = parsed.email_data
+      return new Response(JSON.stringify({ error: "SEND_EMAIL_HOOK_SECRET not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      })
     }
 
     const actionType = emailData.email_action_type
