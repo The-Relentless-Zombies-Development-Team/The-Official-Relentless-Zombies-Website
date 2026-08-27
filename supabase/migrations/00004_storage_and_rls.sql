@@ -9,4 +9,4 @@ drop policy if exists "authenticated_insert_fanart" on storage.objects;
 create policy "authenticated_insert_fanart" on storage.objects
   for insert
   to authenticated
-  using (bucket_id = 'fanart' and (storage.foldername(name))[1] = auth.uid()::text);
+  with check (bucket_id = 'fanart' and (storage.foldername(name))[1] = auth.uid()::text);
