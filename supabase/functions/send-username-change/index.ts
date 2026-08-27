@@ -2,10 +2,10 @@ import { serve } from "https://deno.land/std@0.208.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") as string
-const RESEND_BROADCAST_ID = Deno.env.get("RESEND_BROADCAST_ID") as string
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || ""
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
 const BASE_URL = "https://officialrelentlesszombies.dpdns.org"
+const RESEND_FROM = Deno.env.get("RESEND_FROM") || "Relentless Zombies <onboarding@resend.dev>"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -84,7 +84,6 @@ serve(async (req) => {
       .eq("used", false)
     if (cleanupError) throw cleanupError
 
-    const oldUsername = user.user_metadata?.username || user.email?.split("@")[0] || "Player"
     const confirmationToken = crypto.randomUUID()
     const confirmUrl = `${BASE_URL}/login/change-username.html?token=${confirmationToken}&uid=${user.id}`
 
@@ -104,33 +103,57 @@ serve(async (req) => {
       })
     }
 
-    const broadcastRes = await fetch("https://api.resend.com/broadcasts/" + RESEND_BROADCAST_ID + "/send", {
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<title>Confirm username change</title>
+</head>
+<body style="margin:0;padding:0;background:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+<tr><td align="center" style="padding:40px 20px">
+<table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px;width:100%">
+<tr><td style="background:#1a1a1a;border-radius:12px;border:1px solid #333;padding:40px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+<tr><td style="text-align:center;padding-bottom:24px">
+<h1 style="color:#fff;font-size:20px;font-weight:700;margin:0">Relentless Zombies</h1>
+</td></tr>
+<tr><td style="color:#ccc;font-size:14px;line-height:1.6;padding-bottom:24px">Click the button below to confirm changing your username to <strong style="color:#fff;">${newUsername.replace(/&/g,"&amp;").replace(/</g,"&lt;")}</strong>.</td></tr>
+<tr><td align="center" style="padding-bottom:24px"><a href="${confirmUrl}" style="display:inline-block;background:#ff7200;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;">Confirm username change</a></td></tr>
+<tr><td style="color:#666;font-size:12px;word-break:break-all;padding-bottom:16px">Or copy link: <a href="${confirmUrl}" style="color:#ff7200;">${confirmUrl}</a></td></tr>
+<tr><td style="color:#888;font-size:13px;">You're receiving this because you requested a username change.</td></tr>
+<tr><td style="padding-top:16px"><p style="color:#888;font-size:13px;line-height:1.5;margin:0">If you didn't request this, you can safely ignore it. Link expires in 1 hour.</p></td></tr>
+</table></td></tr></table></td></tr></table>
+</body></html>`
+
+    const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         "Authorization": "Bearer " + RESEND_API_KEY,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        from: RESEND_FROM,
+        to: [user.email!],
         subject: "Confirm your username change - Relentless Zombies",
-        preheader: `Click the button below to confirm changing your username to ${newUsername}.`,
-        actionUrl: confirmUrl,
-        actionLabel: "Confirm username change",
-        code: "",
-        footer: "You're receiving this because you requested a username change.",
-        contacts: {
-          email: user.email,
-        },
+        html,
       }),
     })
-
-    const broadcastData = await broadcastRes.json()
+    const data = await res.json()
+    if (!res.ok) {
+      // cleanup token on email failure
+      await supabase.from("username_change_tokens").delete().eq("token", confirmationToken)
+      return new Response(JSON.stringify({ error: `Email failed: ${JSON.stringify(data)}` }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      })
+    }
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     })
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    const message = error instanceof Error ? error.message : String(error)
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     })

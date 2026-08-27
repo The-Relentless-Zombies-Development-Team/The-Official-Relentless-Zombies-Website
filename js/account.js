@@ -233,20 +233,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     hideMessages()
     const setupContainer = document.getElementById('mfa-setup-container')
     setupContainer.classList.add('active')
+    setupContainer.innerHTML = '<p style="color:#888;font-size:13px;">Setting up...</p>'
 
     try {
-      const { data, error } = await sb.auth.mfa.enroll({ factorType: 'totp' })
+      // Cleanup any unverified TOTP factors before enrolling (prevents "factor already exists")
+      const { data: existing } = await sb.auth.mfa.listFactors()
+      const unverified = existing?.all?.find((f) => f.factor_type === 'totp' && f.status === 'unverified')
+      if (unverified) {
+        await sb.auth.mfa.unenroll({ factorId: unverified.id })
+      }
+
+      const { data, error } = await sb.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Authenticator App' })
       if (error) throw error
 
       const factorId = data.id
-      const qrCode = data.totp?.qr_code
-      const secret = data.totp?.secret
+      const totp = data.totp || {}
+      const qrCode = totp.qr_code
+      const secret = totp.secret
+      const uri = totp.uri
 
       let qrHtml = ''
-      if (qrCode) {
-        qrHtml = `<img src="${qrCode}" alt="QR Code" width="200" height="200">`
+      if (qrCode && qrCode.startsWith('data:')) {
+        qrHtml = `<img src="${qrCode}" alt="QR Code" width="200" height="200" style="display:block;margin:0 auto;border-radius:8px">`
+      } else if (uri) {
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(uri)}`
+        qrHtml = `<img src="${qrUrl}" alt="QR Code" width="200" height="200" style="display:block;margin:0 auto;border-radius:8px"><p style="color:#666;font-size:11px;word-break:break-all;font-family:monospace;margin-top:12px">Key: ${secret || ''}</p>`
       } else if (secret) {
-        qrHtml = `<p style="color:#888;font-size:13px;word-break:break-all;font-family:monospace">Manual setup key: ${secret}</p>`
+        qrHtml = `<p style="color:#888;font-size:13px;word-break:break-all;font-family:monospace">Manual setup key: ${secret}</p><p style="color:#666;font-size:11px;margin-top:8px">Enter this key in your authenticator app if you can't scan the QR.</p>`
+      } else if (qrCode) {
+        // Fallback: qr_code is otpauth:// URI, generate QR via external service
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrCode)}`
+        qrHtml = `<img src="${qrUrl}" alt="QR Code" width="200" height="200" style="display:block;margin:0 auto;border-radius:8px">`
+        if (secret) qrHtml += `<p style="color:#666;font-size:11px;word-break:break-all;font-family:monospace;margin-top:12px">Key: ${secret}</p>`
       }
 
       setupContainer.innerHTML = `
@@ -269,27 +287,48 @@ document.addEventListener('DOMContentLoaded', async () => {
           return
         }
 
-        const { error: verifyError } = await sb.auth.mfa.challengeAndVerify({
-          factorId,
-          code,
-        })
+        // Try challengeAndVerify first, fallback to challenge+verify
+        let verifyError = null
+        try {
+          const { error } = await sb.auth.mfa.challengeAndVerify({ factorId, code })
+          verifyError = error
+        } catch (e) {
+          verifyError = e
+        }
+        if (verifyError) {
+          // Fallback: explicit challenge then verify
+          try {
+            const { data: challengeData, error: chError } = await sb.auth.mfa.challenge({ factorId })
+            if (chError) throw chError
+            const { error: vError } = await sb.auth.mfa.verify({ factorId, challengeId: challengeData.id, code })
+            if (vError) throw vError
+            verifyError = null
+          } catch (e) {
+            verifyError = e
+          }
+        }
 
         if (verifyError) {
-          showError('Invalid code. Please try again.')
+          showError(verifyError.message || 'Invalid code. Please try again.')
           return
         }
 
         showSuccess('Two-factor authentication enabled!')
         setupContainer.classList.remove('active')
+        setupContainer.innerHTML = ''
         await loadMFAStatus()
       })
 
-      document.getElementById('cancel-mfa-setup')?.addEventListener('click', () => {
+      document.getElementById('cancel-mfa-setup')?.addEventListener('click', async () => {
+        // Unenroll the unverified factor if user cancels
+        try { await sb.auth.mfa.unenroll({ factorId }) } catch {}
         setupContainer.classList.remove('active')
         setupContainer.innerHTML = ''
       })
     } catch (err) {
-      showError(err.message)
+      setupContainer.classList.remove('active')
+      setupContainer.innerHTML = ''
+      showError(err.message || 'Failed to setup 2FA. Please try again.')
     }
   })
 

@@ -1,10 +1,14 @@
 import { Webhook } from "https://esm.sh/standardwebhooks@1.0.0"
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") as string
-const RESEND_AUDIENCE_ID = Deno.env.get("RESEND_AUDIENCE_ID") as string
-const RESEND_BROADCAST_ID = Deno.env.get("RESEND_BROADCAST_ID") as string
-const supabaseUrl = Deno.env.get("SUPABASE_URL") || ""
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || ""
 const BASE_URL = Deno.env.get("SITE_URL") || "https://officialrelentlesszombies.dpdns.org"
+const RESEND_FROM = Deno.env.get("RESEND_FROM") || "Relentless Zombies <onboarding@resend.dev>"
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+}
 
 function wrapHtml(inner: string): string {
   return `<!DOCTYPE html>
@@ -62,52 +66,37 @@ function getFooter(type: string): string {
   return "Relentless Zombies Official Website"
 }
 
-async function upsertContact(email: string, username: string): Promise<string> {
-  const res = await fetch("https://api.resend.com/audiences/" + RESEND_AUDIENCE_ID + "/contacts", {
-    method: "POST",
-    headers: {
-      "Authorization": "Bearer " + RESEND_API_KEY,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      email,
-      first_name: username,
-      unsubscribed: false,
-    }),
-  })
-  const data = await res.json()
-  return data.id || ""
-}
-
-async function sendBroadcast(contactEmail: string, subject: string, preheader: string, actionUrl?: string, actionLabel?: string, code?: string, footer?: string) {
-  const res = await fetch("https://api.resend.com/broadcasts/" + RESEND_BROADCAST_ID + "/send", {
-    method: "POST",
-    headers: {
-      "Authorization": "Bearer " + RESEND_API_KEY,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      subject,
-      preheader,
-      actionUrl: actionUrl || "",
-      actionLabel: actionLabel || "",
-      code: code || "",
-      footer: footer || "",
-      contacts: {
-        email: contactEmail,
-      },
-    }),
-  })
-  return res.json()
-}
-
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
 }
 
+async function sendEmail(to: string, subject: string, html: string) {
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer " + RESEND_API_KEY,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: RESEND_FROM,
+      to: [to],
+      subject,
+      html,
+    }),
+  })
+  const data = await res.json()
+  if (!res.ok) {
+    throw new Error(`Resend error ${res.status}: ${JSON.stringify(data)}`)
+  }
+  return data
+}
+
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders })
+  }
   if (req.method !== "POST") {
-    return new Response("not allowed", { status: 400 })
+    return new Response("not allowed", { status: 400, headers: corsHeaders })
   }
 
   const payload = await req.text()
@@ -139,20 +128,21 @@ Deno.serve(async (req) => {
     const actionType = emailData.email_action_type
     const username = user.user_metadata?.username || user.email?.split("@")[0] || "Player"
     const redirectTo = emailData.redirect_to || emailData.site_url || BASE_URL
-    const confirmationUrl = `${supabaseUrl}/auth/v1/verify?token=${emailData.token_hash}&type=${actionType}&redirect_to=${encodeURIComponent(redirectTo)}`
+    const confirmationUrl = `${SUPABASE_URL}/auth/v1/verify?token=${emailData.token_hash}&type=${actionType}&redirect_to=${encodeURIComponent(redirectTo)}`
 
     const subject = getSubject(actionType)
     const preheader = getPreheader(actionType, escapeHtml(username))
     const footer = getFooter(actionType)
 
-    let actionUrl: string | undefined
-    let actionLabel: string | undefined
-    let code: string | undefined
-
+    let inner = ""
     if (actionType === "reauthentication") {
-      code = emailData.token || ""
+      const code = escapeHtml(emailData.token || "")
+      inner = `
+<tr><td style="color:#fff;font-size:14px;padding-bottom:12px">${escapeHtml(preheader)}</td></tr>
+<tr><td align="center" style="padding:20px;background:#222;border-radius:10px;margin-bottom:16px"><span style="color:#fff;font-size:32px;letter-spacing:8px;font-family:monospace;font-weight:700;">${code}</span></td></tr>
+<tr><td style="color:#888;font-size:13px;padding-top:12px">${escapeHtml(footer)}</td></tr>
+`
     } else {
-      actionUrl = confirmationUrl
       const labelMap: Record<string, string> = {
         signup: "Confirm your email",
         recovery: "Reset password",
@@ -160,22 +150,31 @@ Deno.serve(async (req) => {
         email_change: "Confirm email",
         invite: "Accept invitation",
       }
-      actionLabel = labelMap[actionType] || "Continue"
+      const actionLabel = labelMap[actionType] || "Continue"
+      const safeUrl = escapeHtml(confirmationUrl)
+      const safeLabel = escapeHtml(actionLabel)
+      inner = `
+<tr><td style="color:#ccc;font-size:14px;line-height:1.6;padding-bottom:24px">${escapeHtml(preheader)}</td></tr>
+<tr><td align="center" style="padding-bottom:24px"><a href="${safeUrl}" style="display:inline-block;background:#ff7200;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;">${safeLabel}</a></td></tr>
+<tr><td style="color:#666;font-size:12px;word-break:break-all;padding-bottom:16px">Or copy link: <a href="${safeUrl}" style="color:#ff7200;">${safeUrl}</a></td></tr>
+<tr><td style="color:#888;font-size:13px;">${escapeHtml(footer)}</td></tr>
+`
     }
 
-    await upsertContact(user.email, username)
-    await sendBroadcast(user.email, subject, preheader, actionUrl, actionLabel, code, footer)
+    const html = wrapHtml(inner)
+    await sendEmail(user.email, subject, html)
 
     return new Response(JSON.stringify({}), {
       status: 200,
-      headers: { "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     })
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
     return new Response(
       JSON.stringify({
-        error: { http_code: 500, message: error.message },
+        error: { http_code: 500, message },
       }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     )
   }
 })
