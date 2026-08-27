@@ -254,12 +254,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       let qrHtml = ''
       const otpUri = uri || qrCode || ''
+      console.log('[2FA] enroll response:', { factorId, qrCode, uri, secret, otpUri })
       if (otpUri && (otpUri.startsWith('otpauth://') || otpUri.startsWith('data:'))) {
         const qrUrl = otpUri.startsWith('data:') ? otpUri : `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpUri)}`
         qrHtml = `<img src="${qrUrl}" alt="QR Code" width="200" height="200" style="display:block;margin:0 auto;border-radius:8px">`
         if (secret) qrHtml += `<p style="color:#666;font-size:11px;word-break:break-all;font-family:monospace;margin-top:12px">Key: ${secret}</p>`
       } else if (secret) {
         qrHtml = `<p style="color:#888;font-size:13px;word-break:break-all;font-family:monospace">Manual setup key: ${secret}</p><p style="color:#666;font-size:11px;margin-top:8px">Enter this key in your authenticator app if you can't scan the QR.</p>`
+      } else {
+        qrHtml = `<p style="color:#f66">Unable to generate QR code. Please try again or contact support.</p>`
       }
 
       setupContainer.innerHTML = `
