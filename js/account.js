@@ -223,10 +223,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   await loadMFAStatus()
 
-  // Refresh MFA status when tab becomes visible again
+  // Refresh MFA status on every normal reload and when tab becomes visible/focused
+  // Covers: visibilitychange (tab switch), pageshow (bfcache), focus (window refocus), load (hard reload)
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) loadMFAStatus()
   })
+  window.addEventListener('pageshow', () => loadMFAStatus())
+  window.addEventListener('focus', () => loadMFAStatus())
+  window.addEventListener('load', () => loadMFAStatus())
+  // Also refresh when Security tab is clicked (user expects status to be current)
+  document.querySelectorAll('.sidebar .nav-item').forEach(item => {
+    if (item.dataset.tab === 'security') {
+      item.addEventListener('click', () => setTimeout(loadMFAStatus, 50))
+    }
+  })
+  // Fallback: also check on hash change or after a short delay (handles SPA-like nav)
+  setTimeout(loadMFAStatus, 1500)
 
   // Setup MFA (TOTP)
   document.getElementById('setup-mfa-btn')?.addEventListener('click', async () => {
@@ -252,17 +264,52 @@ document.addEventListener('DOMContentLoaded', async () => {
       const secret = totp.secret
       const uri = totp.uri
 
+      // --- Robust QR handling: prefer uri via api.qrserver, avoid raw data: with quotes breaking HTML ---
+      function escapeAttr(s) { return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;') }
       let qrHtml = ''
       const otpUri = uri || qrCode || ''
       console.log('[2FA] enroll response:', { factorId, qrCode, uri, secret, otpUri })
-      if (otpUri && (otpUri.startsWith('otpauth://') || otpUri.startsWith('data:'))) {
-        const qrUrl = otpUri.startsWith('data:') ? otpUri : `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpUri)}`
-        qrHtml = `<img src="${qrUrl}" alt="QR Code" width="200" height="200" style="display:block;margin:0 auto;border-radius:8px">`
-        if (secret) qrHtml += `<p style="color:#666;font-size:11px;word-break:break-all;font-family:monospace;margin-top:12px">Key: ${secret}</p>`
+      // Determine safe QR source
+      let qrUrl = ''
+      let useQrImg = false
+      if (uri && uri.startsWith('otpauth://')) {
+        // Most reliable: generate QR from otpauth URI via external service (no quoting issues, encodeURIComponent handles it)
+        qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(uri)}`
+        useQrImg = true
+      } else if (otpUri && otpUri.startsWith('data:image/') && otpUri.includes(';base64,')) {
+        // Safe base64 data URI (no raw quotes) — can be used directly
+        // Verify it does not contain unescaped double quotes that would break src=""
+        if (!otpUri.includes('"')) {
+          qrUrl = otpUri
+          useQrImg = true
+        } else {
+          // Fallback to uri if available, else secret
+          if (uri) {
+            qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(uri)}`
+            useQrImg = true
+          }
+        }
+      } else if (otpUri && otpUri.startsWith('otpauth://')) {
+        qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpUri)}`
+        useQrImg = true
+      }
+      if (useQrImg && qrUrl) {
+        const safeUrl = escapeAttr(qrUrl)
+        // onerror fallback to show manual key/uri if external QR service is blocked (CSP, offline, etc)
+        qrHtml = `<img src="${safeUrl}" alt="QR Code" width="200" height="200" style="display:block;margin:0 auto;border-radius:8px;background:#fff;padding:8px" onerror="this.style.display='none';document.getElementById('qr-fallback-'+factorId)?.style && (document.getElementById('qr-fallback-'+factorId).style.display='block')">`
+        qrHtml += `<div id="qr-fallback-${factorId}" style="display:none;color:#888;font-size:12px;word-break:break-all;margin-top:12px">QR failed to load — enter key manually:<br><code style="color:#fff;font-family:monospace;word-break:break-all">${escapeAttr(secret || otpUri || '')}</code><br><span style="font-size:11px;color:#666">URI: ${escapeAttr(otpUri)}</span></div>`
+        if (secret) qrHtml += `<p style="color:#666;font-size:11px;word-break:break-all;font-family:monospace;margin-top:12px">Key: ${escapeAttr(secret)}</p>`
+        if (otpUri && otpUri.startsWith('otpauth://')) {
+          qrHtml += `<p style="color:#666;font-size:10px;word-break:break-all;margin-top:8px">If QR doesn't scan, copy this URI into your authenticator app's manual entry:</p><p style="color:#888;font-size:10px;word-break:break-all;font-family:monospace;background:#222;padding:8px;border-radius:6px">${escapeAttr(otpUri)}</p>`
+        }
       } else if (secret) {
-        qrHtml = `<p style="color:#888;font-size:13px;word-break:break-all;font-family:monospace">Manual setup key: ${secret}</p><p style="color:#666;font-size:11px;margin-top:8px">Enter this key in your authenticator app if you can't scan the QR.</p>`
+        qrHtml = `<p style="color:#888;font-size:13px;word-break:break-all;font-family:monospace">Manual setup key: ${escapeAttr(secret)}</p><p style="color:#666;font-size:11px;margin-top:8px">Enter this key in your authenticator app if you can't scan the QR.</p>`
+        if (otpUri) qrHtml += `<p style="color:#666;font-size:10px;word-break:break-all;margin-top:8px;font-family:monospace">URI: ${escapeAttr(otpUri)}</p>`
+      } else if (otpUri) {
+        // Last resort: show the URI as text so user can copy it (even if we couldn't make QR)
+        qrHtml = `<p style="color:#888;font-size:13px;word-break:break-all">Scan failed — copy this URI into your app:</p><p style="color:#fff;font-size:11px;word-break:break-all;font-family:monospace;background:#222;padding:12px;border-radius:8px">${escapeAttr(otpUri)}</p>`
       } else {
-        qrHtml = `<p style="color:#f66">Unable to generate QR code. Please try again or contact support.</p>`
+        qrHtml = `<p style="color:#f66">Unable to generate QR code. Secret and URI missing — please try again or contact support.</p><p style="color:#888;font-size:11px">Check console for enroll response details.</p>`
       }
 
       setupContainer.innerHTML = `

@@ -5,7 +5,11 @@ const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") as string
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || ""
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
 const BASE_URL = "https://officialrelentlesszombies.dpdns.org"
-const RESEND_FROM = Deno.env.get("RESEND_FROM") || "Relentless Zombies <onboarding@resend.dev>"
+const RESEND_FROM = Deno.env.get("RESEND_FROM") || "Relentless Zombies <noreply@officialrelentlesszombies.dpdns.org>"
+// NOTE: 0$ fix: onboarding@resend.dev only allows sending to Resend account owner (ahmedelkafas15@gmail.com).
+// To send to any user (e.g. ahmedelkafas129@gmail.com) you MUST verify officialrelentlesszombies.dpdns.org at resend.com/domains
+// (add TXT/SPF/DKIM via deSEC). Until verified, signup emails will fail with 403 validation_error.
+// Fallback: disable the Supabase Auth email hook (Dashboard -> Auth -> Hooks) to use Supabase built-in email (rate-limited but works for any address).
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -141,7 +145,9 @@ serve(async (req) => {
     if (!res.ok) {
       // cleanup token on email failure
       await supabase.from("username_change_tokens").delete().eq("token", confirmationToken)
-      return new Response(JSON.stringify({ error: `Email failed: ${JSON.stringify(data)}` }), {
+      const isTestingLimit = res.status === 403 && (data?.message || JSON.stringify(data)).includes("testing emails")
+      const hint = isTestingLimit ? " — Resend 403: onboarding@resend.dev only sends to account owner. Verify officialrelentlesszombies.dpdns.org at resend.com/domains or set RESEND_FROM to verified domain, or disable Auth email hook for built-in email." : ""
+      return new Response(JSON.stringify({ error: `Email failed${hint}: ${JSON.stringify(data)}` }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       })
