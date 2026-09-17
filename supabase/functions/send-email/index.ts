@@ -16,9 +16,8 @@ const corsHeaders = {
 
 function wrapHtml(inner: string): string {
   return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
-<title>Relentless Zombies</title>
-</head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<title>Relentless Zombies</title></head>
 <body style="margin:0;padding:0;background:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
 <tr><td align="center" style="padding:40px 20px">
@@ -27,11 +26,11 @@ function wrapHtml(inner: string): string {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
 <tr><td style="text-align:center;padding-bottom:24px">
 <img src="${BASE_URL}/favicon.ico" alt="RZ" width="48" height="48" style="border-radius:50%;display:block;margin:0 auto">
-<h1 style="color:#fff;font-size:20px;font-weight:700;margin:16px 0 0;letter-spacing:-0.3px">Relentless&shy;Zombies</h1>
+<h1 style="color:#fff;font-size:20px;font-weight:700;margin:16px 0 0;letter-spacing:-0.3px">Relentless Zombies</h1>
 </td></tr>
 ${inner}
-<tr><td style="padding-top:16px">
-<p style="color:#888;font-size:13px;line-height:1.5;margin:0">If you didn't request this email, you can safely ignore it.</p>
+<tr><td style="padding-top:16px;border-top:1px solid #222;margin-top:16px">
+<p style="color:#888;font-size:11px;line-height:1.5;margin:0">If you didn't create an account, you can safely ignore this email. <a href="https://officialrelentlesszombies.dpdns.org" style="color:#888;text-decoration:underline">Relentless Zombies</a> • <a href="mailto:support@officialrelentlesszombies.dpdns.org" style="color:#888;text-decoration:underline">Contact support</a></p>
 </td></tr>
 </table></td></tr></table></td></tr></table>
 </body></html>`
@@ -51,12 +50,12 @@ function getSubject(type: string): string {
 
 function getPreheader(type: string, username: string): string {
   const map: Record<string, string> = {
-    signup: `Welcome, ${username}! Click the button below to confirm your email and activate your account.`,
-    recovery: `We received a request to reset your password, ${username}. Click the button below to choose a new one.`,
-    magiclink: `Click below to sign in instantly, ${username}. This link expires shortly.`,
-    email_change: `Click below to confirm this email address for your account, ${username}.`,
-    reauthentication: `Your verification code is below, ${username}. It expires shortly.`,
-    invite: `You've been invited to join Relentless Zombies, ${username}! Click below to accept.`,
+    signup: `Hi ${username}, please confirm your email to activate your Relentless Zombies account.`,
+    recovery: `Hi ${username}, a password reset was requested for your account.`,
+    magiclink: `Hi ${username}, your sign-in link for Relentless Zombies is ready.`,
+    email_change: `Hi ${username}, please confirm this email address for your account.`,
+    reauthentication: `Hi ${username}, your verification code is below.`,
+    invite: `Hi ${username}, you've been invited to join Relentless Zombies.`,
   }
   return map[type] || `Notification for ${username}`
 }
@@ -74,7 +73,9 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
 }
 
-async function sendEmail(to: string, subject: string, html: string) {
+async function sendEmail(to: string, subject: string, html: string, text?: string) {
+  // Generate plain-text fallback from html for Gmail spam filter
+  const plainText = text || html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 1000)
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -86,6 +87,15 @@ async function sendEmail(to: string, subject: string, html: string) {
       to: [to],
       subject,
       html,
+      text: plainText,
+      reply_to: "support@officialrelentlesszombies.dpdns.org",
+      headers: {
+        "X-Entity-Ref-ID": `rz-${Date.now()}`,
+        // List-Unsubscribe helps Gmail not flag as unsolicited; use one-click mailto + https
+        "List-Unsubscribe": "<mailto:support@officialrelentlesszombies.dpdns.org?subject=Unsubscribe>, <https://officialrelentlesszombies.dpdns.org/unsubscribe>",
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
+      tags: [{ name: "category", value: "transactional" }],
     }),
   })
   const data = await res.json()
@@ -165,13 +175,14 @@ Deno.serve(async (req) => {
       inner = `
 <tr><td style="color:#ccc;font-size:14px;line-height:1.6;padding-bottom:24px">${escapeHtml(preheader)}</td></tr>
 <tr><td align="center" style="padding-bottom:24px"><a href="${safeUrl}" style="display:inline-block;background:#ff7200;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;">${safeLabel}</a></td></tr>
-<tr><td style="color:#666;font-size:12px;word-break:break-all;padding-bottom:16px">Or copy link: <a href="${safeUrl}" style="color:#ff7200;">${safeUrl}</a></td></tr>
+<tr><td style="color:#666;font-size:11px;word-break:break-all;padding-bottom:16px">Link not working? Copy and paste this URL into your browser:<br><span style="color:#999;">${safeUrl}</span></td></tr>
 <tr><td style="color:#888;font-size:13px;">${escapeHtml(footer)}</td></tr>
 `
     }
 
     const html = wrapHtml(inner)
-    await sendEmail(user.email, subject, html)
+    const text = `${preheader} ${confirmationUrl} - ${footer} If you didn't request this, ignore.`
+    await sendEmail(user.email, subject, html, text)
 
     return new Response(JSON.stringify({}), {
       status: 200,

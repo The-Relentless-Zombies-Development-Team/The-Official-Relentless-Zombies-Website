@@ -128,6 +128,7 @@ serve(async (req) => {
 </table></td></tr></table></td></tr></table>
 </body></html>`
 
+    const plainText = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 900)
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -139,6 +140,13 @@ serve(async (req) => {
         to: [user.email!],
         subject: "Confirm your username change - Relentless Zombies",
         html,
+        text: plainText,
+        reply_to: "support@officialrelentlesszombies.dpdns.org",
+        headers: {
+          "X-Entity-Ref-ID": `rz-uc-${Date.now()}`,
+          "List-Unsubscribe": "<mailto:support@officialrelentlesszombies.dpdns.org?subject=Unsubscribe>, <https://officialrelentlesszombies.dpdns.org/unsubscribe>",
+        },
+        tags: [{ name: "category", value: "transactional" }],
       }),
     })
     const data = await res.json()
