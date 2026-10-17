@@ -8,8 +8,8 @@ Frontend: Framer-generated HTML/CSS, customized with vanilla JS.
 ## Features
 
 - **Authentication** — Sign up, log in, password reset, sign out
-- **Account management** — Profile & Security tabs: change password, MFA/2FA (TOTP via authenticator app), username change (email confirmation, 2-week cooldown)
-- **Email** — Unlimited via Resend Broadcasts (signup confirmation, password reset, email change, verification codes, username change confirmation)
+- **Account management** — Profile & Security tabs: change password, MFA/2FA (TOTP via authenticator app), username change (email confirmation, 2-week cooldown), **delete account (MFA or email OTP verification)**
+- **Email** — Unlimited via Resend Broadcasts (signup confirmation, password reset, email change, verification codes, username change confirmation, account deletion codes)
 - **Fan Art** — Gallery with community-submitted artwork stored in Supabase Storage
 - **Updates** — Game update changelog
 
@@ -80,12 +80,25 @@ Required Supabase Edge Function environment vars (set in Supabase Dashboard → 
 - `RESEND_BROADCAST_ID` — Resend broadcast ID for email templates
 - `SEND_EMAIL_HOOK_SECRET` — Webhook secret for Supabase Auth email hooks (required; function will return 500 if unset)
 - `SUPABASE_URL` — Supabase project URL (e.g. `https://qyoortkrlfxzuzjxwfge.supabase.co`)
-- `SUPABASE_SERVICE_ROLE_KEY` — Supabase service role key for admin operations
+- `SUPABASE_SERVICE_ROLE_KEY` — Supabase service role key for admin operations (required for delete-account Edge Function)
+
+### Delete Account
+
+Account deletion requires identity verification:
+
+- **If MFA/2FA is enrolled**: Verify with a 6-digit authenticator code, then the account is deleted.
+- **If MFA/2FA is not enrolled**: A 6-digit verification code is sent to the user's email via Resend. Enter the code to verify, then the account is deleted.
+
+Edge Functions:
+- `send-email` — Sends authentication and transactional emails via Resend
+- `send-username-change` — Sends username change confirmation emails via Resend
+- `send-delete-code` — Sends account deletion verification codes via Resend
+- `delete-account` — Deletes the authenticated user's account (requires service role)
 
 ## Relevant Files
 
 - `js/auth.js` — injected CSS for navbar fixed positioning + sign-out size
-- `js/account.js` — MFA status/enroll/disable, QR code fallback, visibilitychange listener
+- `js/account.js` — MFA status/enroll/disable, QR code fallback, visibilitychange listener, **account deletion with MFA or email OTP verification**
 - `index.html`, `updates.html`, `en/index.html`, `en/updates.html` — nav structures per page
 - `css/site.css` — framer-generated styling (73KB, single line)
 - `supabase/migrations/` — SQL migrations (00001–00004)
