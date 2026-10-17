@@ -419,7 +419,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       deleteCodeInput.value = ''
       // Check MFA status to show/hide send code button
       sb.auth.mfa.listFactors().then(({ data }) => {
-        const hasMFA = data?.totp?.length > 0
+        // Handle both response formats: { factors: [...] } or { totp: [...] }
+        const factorsArray = data?.factors || data?.totp || []
+        const hasMFA = factorsArray?.some(f => f.factor_type === 'totp' && f.status === 'verified') || false
         if (sendCodeBtn) { sendCodeBtn.style.display = hasMFA ? 'none' : 'inline-block' }
         if (!hasMFA) {
           sendCodeBtn?.click() // auto-send code for non-MFA users
@@ -496,19 +498,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
       // Check if MFA is enrolled
-      const { data: factors } = await sb.auth.mfa.listFactors()
-      const hasMFA = factors?.totp?.length > 0
+      const { data: factorsData } = await sb.auth.mfa.listFactors()
+      // Handle both response formats: { factors: [...] } or { totp: [...] }
+      const factorsArray = factorsData?.factors || factorsData?.totp || []
+      const totpFactor = factorsArray?.find(f => f.factor_type === 'totp' && f.status === 'verified')
+      const hasMFA = !!totpFactor
 
       if (hasMFA) {
         // MFA path: verify TOTP code
-        const totpFactor = factors?.totp?.[0]
-        if (!totpFactor) {
-          showError('No MFA factor found.')
-          confirmDeleteBtn.disabled = false
-          confirmDeleteBtn.textContent = 'Delete Account'
-          return
-        }
-
         try {
           const { error: mfaError } = await sb.auth.mfa.challengeAndVerify({
             factorId: totpFactor.id,
