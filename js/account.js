@@ -501,7 +501,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       if (hasMFA) {
         // MFA path: verify TOTP code
-        const totpFactor = factors.data?.totp?.[0]
+        const totpFactor = factors?.totp?.[0]
         if (!totpFactor) {
           showError('No MFA factor found.')
           confirmDeleteBtn.disabled = false
