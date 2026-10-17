@@ -409,18 +409,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   const confirmDeleteBtn = document.getElementById('confirm-delete-account-btn')
   const deleteConfirmCheckbox = document.getElementById('delete-confirm')
   const sendCodeBtn = document.getElementById('send-delete-code-btn')
+  const deleteCodeInput = document.getElementById('delete-mfa-code')
 
   deleteBtn?.addEventListener('click', () => {
     const isHidden = deleteForm.style.display === 'none'
     deleteForm.style.display = isHidden ? 'block' : 'none'
     if (isHidden) {
       deleteConfirmCheckbox.checked = false
-      document.getElementById('delete-mfa-code').value = ''
+      deleteCodeInput.value = ''
       // Check MFA status to show/hide send code button
       sb.auth.mfa.listFactors().then(({ data }) => {
         const hasMFA = data?.totp?.length > 0
         sendCodeBtn?.style.display = hasMFA ? 'none' : 'inline-block'
-        if (!hasMFA) sendCodeBtn?.click() // auto-send code for non-MFA users
+        if (!hasMFA) {
+          sendCodeBtn?.click() // auto-send code for non-MFA users
+        }
+      }).catch((err) => {
+        console.error('MFA list error:', err)
+        sendCodeBtn?.style.display = 'inline-block'
+        sendCodeBtn?.click()
       })
     }
   })
@@ -428,7 +435,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   cancelDeleteBtn?.addEventListener('click', () => {
     deleteForm.style.display = 'none'
     deleteConfirmCheckbox.checked = false
-    document.getElementById('delete-mfa-code').value = ''
+    deleteCodeInput.value = ''
   })
 
   sendCodeBtn?.addEventListener('click', async () => {
@@ -437,25 +444,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     sendCodeBtn.textContent = 'Sending...'
 
     try {
-      const token = (await getSession()).access_token
+      const session = await getSession()
+      if (!session?.access_token) {
+        showError('Not logged in. Please log in again.')
+        sendCodeBtn.disabled = false
+        sendCodeBtn.textContent = 'Send Verification Code'
+        return
+      }
+
       const res = await fetch(
         'https://qyoortkrlfxzuzjxwfge.supabase.co/functions/v1/send-delete-code',
         {
           method: 'POST',
           headers: {
-            'Authorization': 'Bearer ' + token,
+            'Authorization': 'Bearer ' + session.access_token,
             'Content-Type': 'application/json',
           },
         }
       )
       const data = await res.json()
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
       if (data.error) throw new Error(data.error)
 
       showSuccess('Verification code sent to your email.')
       sendCodeBtn.style.display = 'none'
-      document.getElementById('delete-mfa-code').focus()
+      deleteCodeInput.focus()
     } catch (err) {
-      showError(err.message)
+      const msg = err instanceof Error ? err.message : String(err)
+      showError('Failed to send code: ' + msg)
       sendCodeBtn.disabled = false
       sendCodeBtn.textContent = 'Send Verification Code'
     }
@@ -463,7 +479,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   confirmDeleteBtn?.addEventListener('click', async () => {
     hideMessages()
-    const code = document.getElementById('delete-mfa-code').value.trim()
+    const code = deleteCodeInput.value.trim()
 
     if (!code || code.length !== 6) {
       showError('Please enter a valid 6-digit code.')
@@ -475,58 +491,88 @@ document.addEventListener('DOMContentLoaded', async () => {
       return
     }
 
-    // Check if MFA is enrolled
-    const { data: factors } = await sb.auth.mfa.listFactors()
-    const hasMFA = factors?.totp?.length > 0
-
-    if (hasMFA) {
-      // MFA path: verify TOTP code
-      const totpFactor = factors.data?.totp?.[0]
-      if (!totpFactor) {
-        showError('No MFA factor found.')
-        return
-      }
-
-      try {
-        const { error: mfaError } = await sb.auth.mfa.challengeAndVerify({
-          factorId: totpFactor.id,
-          code,
-        })
-        if (mfaError) {
-          showError('Invalid authenticator code.')
-          return
-        }
-      } catch (e) {
-        showError('Invalid authenticator code.')
-        return
-      }
-    } else {
-      // No MFA: verify email OTP code stored in user_metadata
-      const { data: { user } } = await sb.auth.getUser()
-      if (!user || user.user_metadata?.delete_otp !== code) {
-        showError('Invalid or expired verification code. Please request a new one.')
-        return
-      }
-      // Clear the OTP after successful verification
-      await sb.auth.updateUser({ data: { delete_otp: null } })
-    }
-
     confirmDeleteBtn.disabled = true
-    confirmDeleteBtn.textContent = 'Deleting...'
+    confirmDeleteBtn.textContent = 'Verifying...'
 
     try {
-      const token = (await getSession()).access_token
+      // Check if MFA is enrolled
+      const { data: factors } = await sb.auth.mfa.listFactors()
+      const hasMFA = factors?.totp?.length > 0
+
+      if (hasMFA) {
+        // MFA path: verify TOTP code
+        const totpFactor = factors.data?.totp?.[0]
+        if (!totpFactor) {
+          showError('No MFA factor found.')
+          confirmDeleteBtn.disabled = false
+          confirmDeleteBtn.textContent = 'Delete Account'
+          return
+        }
+
+        try {
+          const { error: mfaError } = await sb.auth.mfa.challengeAndVerify({
+            factorId: totpFactor.id,
+            code,
+          })
+          if (mfaError) {
+            showError('Invalid authenticator code.')
+            confirmDeleteBtn.disabled = false
+            confirmDeleteBtn.textContent = 'Delete Account'
+            return
+          }
+        } catch (e) {
+          showError('Invalid authenticator code: ' + (e instanceof Error ? e.message : String(e)))
+          confirmDeleteBtn.disabled = false
+          confirmDeleteBtn.textContent = 'Delete Account'
+          return
+        }
+      } else {
+        // No MFA: verify email OTP code stored in user_metadata
+        const { data: { user }, error: userError } = await sb.auth.getUser()
+        if (userError || !user) {
+          showError('Unable to verify your session. Please log in again.')
+          confirmDeleteBtn.disabled = false
+          confirmDeleteBtn.textContent = 'Delete Account'
+          return
+        }
+        const storedCode = user.user_metadata?.delete_otp
+        if (!storedCode || storedCode !== code) {
+          showError('Invalid or expired verification code. Please request a new one.')
+          confirmDeleteBtn.disabled = false
+          confirmDeleteBtn.textContent = 'Delete Account'
+          return
+        }
+        // Clear the OTP after successful verification
+        try {
+          await sb.auth.updateUser({ data: { delete_otp: null } })
+        } catch (clearErr) {
+          console.warn('Could not clear OTP:', clearErr)
+        }
+      }
+
+      // Delete the account via Edge Function
+      confirmDeleteBtn.textContent = 'Deleting account...'
+
+      const session = await getSession()
+      if (!session?.access_token) {
+        showError('Session expired. Please log in again.')
+        confirmDeleteBtn.disabled = false
+        confirmDeleteBtn.textContent = 'Delete Account'
+        return
+      }
+
       const res = await fetch(
         'https://qyoortkrlfxzuzjxwfge.supabase.co/functions/v1/delete-account',
         {
           method: 'POST',
           headers: {
-            'Authorization': 'Bearer ' + token,
+            'Authorization': 'Bearer ' + session.access_token,
             'Content-Type': 'application/json',
           },
         }
       )
       const data = await res.json()
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
       if (data.error) throw new Error(data.error)
 
       showSuccess('Account deleted successfully.')
@@ -535,7 +581,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.href = window.location.origin + siteRoot() + '/index.html'
       }, 1500)
     } catch (err) {
-      showError(err.message)
+      const msg = err instanceof Error ? err.message : String(err)
+      showError('Delete failed: ' + msg)
       confirmDeleteBtn.disabled = false
       confirmDeleteBtn.textContent = 'Delete Account'
     }
