@@ -401,4 +401,96 @@ document.addEventListener('DOMContentLoaded', async () => {
     showSuccess('Two-factor authentication disabled.')
     await loadMFAStatus()
   })
+
+  // Delete Account
+  const deleteBtn = document.getElementById('delete-account-btn')
+  const deleteForm = document.getElementById('delete-account-form')
+  const cancelDeleteBtn = document.getElementById('cancel-delete-account')
+  const confirmDeleteBtn = document.getElementById('confirm-delete-account-btn')
+  const deleteConfirmCheckbox = document.getElementById('delete-confirm')
+
+  deleteBtn?.addEventListener('click', () => {
+    const isHidden = deleteForm.style.display === 'none'
+    deleteForm.style.display = isHidden ? 'block' : 'none'
+    if (isHidden) {
+      deleteConfirmCheckbox.checked = false
+      document.getElementById('delete-mfa-code').value = ''
+    }
+  })
+
+  cancelDeleteBtn?.addEventListener('click', () => {
+    deleteForm.style.display = 'none'
+    deleteConfirmCheckbox.checked = false
+    document.getElementById('delete-mfa-code').value = ''
+  })
+
+  confirmDeleteBtn?.addEventListener('click', async () => {
+    hideMessages()
+    const code = document.getElementById('delete-mfa-code').value.trim()
+
+    if (!code || code.length !== 6) {
+      showError('Please enter a valid 6-digit code.')
+      return
+    }
+
+    if (!deleteConfirmCheckbox.checked) {
+      showError('Please confirm you understand this will permanently delete your account.')
+      return
+    }
+
+    // Verify MFA is enrolled
+    const { data: factors } = await sb.auth.mfa.listFactors()
+    if (!factors?.totp?.length > 0) {
+      showError('Two-factor authentication is required to delete your account. Enable 2FA first.')
+      return
+    }
+
+    const totpFactor = factors.data?.totp?.[0]
+    if (!totpFactor) {
+      showError('No MFA factor found.')
+      return
+    }
+
+    confirmDeleteBtn.disabled = true
+    confirmDeleteBtn.textContent = 'Deleting...'
+
+    try {
+      // Verify MFA code
+      const { error: mfaError } = await sb.auth.mfa.challengeAndVerify({
+        factorId: totpFactor.id,
+        code,
+      })
+      if (mfaError) {
+        showError('Invalid authenticator code.')
+        confirmDeleteBtn.disabled = false
+        confirmDeleteBtn.textContent = 'Delete Account'
+        return
+      }
+
+      // Call Edge Function to delete the account
+      const token = (await getSession()).access_token
+      const res = await fetch(
+        'https://qyoortkrlfxzuzjxwfge.supabase.co/functions/v1/delete-account',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json',
+          },
+        }
+      )
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+
+      showSuccess('Account deleted successfully.')
+      setTimeout(() => {
+        sb.auth.signOut()
+        window.location.href = window.location.origin + siteRoot() + '/index.html'
+      }, 1500)
+    } catch (err) {
+      showError(err.message)
+      confirmDeleteBtn.disabled = false
+      confirmDeleteBtn.textContent = 'Delete Account'
+    }
+  })
 })

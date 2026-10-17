@@ -152,6 +152,24 @@
         <div id="mfa-setup-container" class="mfa-setup"></div>
         <button class="auth-btn green" id="setup-mfa-btn" style="display:none">Enable 2FA</button>
         <button class="auth-btn danger" id="disable-mfa-btn" style="display:none">Disable 2FA</button>
+
+        <div class="section-title">Delete Account</div>
+        <div class="info-box">
+          <p style="margin:0;color:#888;font-size:13px">Permanently delete your account. This cannot be undone. Two-factor authentication is required.</p>
+        </div>
+        <button class="auth-btn danger" id="delete-account-btn" style="margin-top:8px">Delete Account</button>
+        <div id="delete-account-form" style="display:none;margin-top:16px">
+          <div class="form-group">
+            <label for="delete-mfa-code">Authenticator Code</label>
+            <input id="delete-mfa-code" type="text" placeholder="Enter 6-digit code..." maxlength="6" style="text-align:center;font-size:20px;letter-spacing:4px;font-family:monospace">
+          </div>
+          <div style="margin:12px 0">
+            <input type="checkbox" id="delete-confirm" style="margin-right:8px">
+            <label for="delete-confirm" style="font-size:13px;color:#888">I understand this will permanently delete my account and all data.</label>
+          </div>
+          <button class="auth-btn danger" id="confirm-delete-account-btn">Delete Account</button>
+          <button class="auth-btn outline" id="cancel-delete-account" style="margin-left:8px">Cancel</button>
+        </div>
       </div>
     </div>
   </div>
