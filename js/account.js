@@ -420,13 +420,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Check MFA status to show/hide send code button
       sb.auth.mfa.listFactors().then(({ data }) => {
         const hasMFA = data?.totp?.length > 0
-        sendCodeBtn?.style.display = hasMFA ? 'none' : 'inline-block'
+        if (sendCodeBtn) { sendCodeBtn.style.display = hasMFA ? 'none' : 'inline-block' }
         if (!hasMFA) {
           sendCodeBtn?.click() // auto-send code for non-MFA users
         }
       }).catch((err) => {
         console.error('MFA list error:', err)
-        sendCodeBtn?.style.display = 'inline-block'
+        if (sendCodeBtn) { sendCodeBtn.style.display = 'inline-block' }
         sendCodeBtn?.click()
       })
     }
